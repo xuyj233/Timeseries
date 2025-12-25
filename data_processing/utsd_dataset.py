@@ -153,7 +153,7 @@ def prepare_utsd_for_training(
     max_samples=None,
     cache_dir=None,
     use_mirror=True,
-    output_dir="data_cache/utsd"
+        output_dir="data/utsd"
 ):
     """
     准备UTSD数据集用于训练

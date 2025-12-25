@@ -402,7 +402,7 @@ def prepare_s3_for_pretraining(
     max_variates: Optional[int] = None,
     num_train_samples: Optional[int] = None,
     num_val_samples: Optional[int] = None,
-    output_dir: str = "data_cache/s3",
+    output_dir: str = "data/s3",
     random_seed: int = 42,
     use_cache: bool = True
 ) -> Tuple[S3Dataset, S3Dataset, Dict]:
@@ -566,7 +566,7 @@ def prepare_csv_for_pretraining(
     max_variates: Optional[int] = None,
     num_train_samples: Optional[int] = None,
     num_val_samples: Optional[int] = None,
-    output_dir: str = "data_cache/s3",
+    output_dir: str = "data/s3",
     random_seed: int = 42,
     use_cache: bool = True
 ) -> Tuple[S3Dataset, S3Dataset, Dict]:

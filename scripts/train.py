@@ -106,7 +106,7 @@ def main():
                        choices=['local', 'utsd', 'utsd-s3', 'standard', 'csv'],
                        default='local',
                        help="Data source: local, utsd, utsd-s3, standard (ETTH1, ECL, etc.), or csv")
-    parser.add_argument("--data-dir", type=str, default="data_cache",
+    parser.add_argument("--data-dir", type=str, default="data",
                        help="Data directory (for local data and cache)")
     parser.add_argument("--utsd-subset", type=str, default=None,
                        help="UTSD subset (UTSD-1G, UTSD-2G, UTSD-4G, UTSD-12G)")

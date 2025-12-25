@@ -1,12 +1,12 @@
 @echo off
 REM ============================================================================
-REM 在 selected_factors.csv 上运行预训练
+REM Run pretraining on selected_factors.csv
 REM ============================================================================
 
 setlocal enabledelayedexpansion
 
 REM 配置参数
-set CSV_PATH=selected_factors.csv
+set CSV_PATH=data\selected_factors.csv
 set MODEL_STRUCTURE=base
 set BATCH_SIZE=4
 set NUM_EPOCHS=10
@@ -16,7 +16,7 @@ set CONTEXT_LENGTH=512
 set OUTPUT_DIR=outputs\pretrain_csv
 
 echo ============================================================================
-echo 在 selected_factors.csv 上运行预训练
+echo Running pretraining on selected_factors.csv
 echo ============================================================================
 echo.
 
@@ -37,7 +37,7 @@ echo.
 
 REM 创建输出目录
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
-if not exist data_cache mkdir data_cache
+if not exist data mkdir data
 
 echo [INFO] 开始预训练...
 python scripts\train.py ^
@@ -53,7 +53,7 @@ python scripts\train.py ^
     --min-learning-rate %MIN_LEARNING_RATE% ^
     --scheduler-type cosine ^
     --output-dir %OUTPUT_DIR% ^
-    --data-dir data_cache
+    --data-dir data
 
 if errorlevel 1 (
     echo [ERROR] 预训练失败！

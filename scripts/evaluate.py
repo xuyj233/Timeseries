@@ -269,7 +269,7 @@ def main():
                        help="Single dataset to evaluate")
     parser.add_argument("--datasets", type=str, nargs='+', default=None,
                        help="Multiple datasets to evaluate (e.g., ETTH1 ECL TRAFFIC)")
-    parser.add_argument("--data-dir", type=str, default="data_cache/standard_datasets",
+    parser.add_argument("--data-dir", type=str, default="data/standard_datasets",
                        help="Data directory")
     
     # 评估参数

@@ -213,7 +213,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Prepare data for TIMER fine-tuning")
     parser.add_argument("--csv-path", type=str, 
-                       default=r"..\pipeline_output\selected_factors.csv",
+                       default=r"data\selected_factors.csv",
                        help="Path to input CSV file")
     parser.add_argument("--lookback", type=int, default=512,
                        help="Lookback length")

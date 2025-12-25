@@ -40,9 +40,13 @@ ENV/
 *~
 
 # ============================================================================
-# 数据文件（data_cache目录存储实际数据）
+# Data files (data folder contains actual data files)
 # ============================================================================
 data_cache/
+# Exclude all data files from Git (they are too large)
+data/
+!data/.gitkeep
+# Exclude large files
 *.csv
 *.pkl
 *.npy

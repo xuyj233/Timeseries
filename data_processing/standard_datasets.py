@@ -146,7 +146,7 @@ class StandardTimeSeriesDataset(Dataset):
         return data
 
 
-def download_dataset(dataset_name: str, data_dir: str = "data_cache/standard_datasets") -> str:
+def download_dataset(dataset_name: str, data_dir: str = "data/standard_datasets") -> str:
     """
     下载标准数据集
     
@@ -192,7 +192,7 @@ def load_standard_dataset(
     train_ratio: float = 0.7,
     val_ratio: float = 0.1,
     test_ratio: float = 0.2,
-    data_dir: str = "data_cache/standard_datasets",
+    data_dir: str = "data/standard_datasets",
     download: bool = True
 ) -> Tuple[StandardTimeSeriesDataset, StandardTimeSeriesDataset, StandardTimeSeriesDataset, dict]:
     """
@@ -302,8 +302,8 @@ def prepare_multiple_datasets(
     dataset_names: List[str],
     lookback: int = 672,
     pred_len: int = 96,
-    data_dir: str = "data_cache/standard_datasets",
-    output_dir: str = "data_cache/standard_datasets_combined",
+    data_dir: str = "data/standard_datasets",
+    output_dir: str = "data/standard_datasets_combined",
     download: bool = True
 ) -> Tuple[StandardTimeSeriesDataset, StandardTimeSeriesDataset, StandardTimeSeriesDataset, dict]:
     """
