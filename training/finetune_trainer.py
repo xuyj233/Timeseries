@@ -344,7 +344,7 @@ class FineTuneTrainer:
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
         epochs = range(1, len(self.train_losses) + 1)
         
-        # 损失曲线
+        # Loss curve
         axes[0, 0].plot(epochs, self.train_losses, 'b-', label='Train Loss', linewidth=2)
         axes[0, 0].plot(epochs, self.val_losses, 'r-', label='Val Loss', linewidth=2)
         axes[0, 0].set_xlabel('Epoch')
@@ -353,7 +353,7 @@ class FineTuneTrainer:
         axes[0, 0].legend()
         axes[0, 0].grid(True, alpha=0.3)
         
-        # RMSE 曲线
+        # RMSE curve
         val_rmse = [m['rmse'] for m in self.val_metrics_history]
         axes[0, 1].plot(epochs, val_rmse, 'g-', label='Val RMSE', linewidth=2)
         axes[0, 1].set_xlabel('Epoch')
@@ -362,7 +362,7 @@ class FineTuneTrainer:
         axes[0, 1].legend()
         axes[0, 1].grid(True, alpha=0.3)
         
-        # MAE 曲线
+        # MAE curve
         val_mae = [m['mae'] for m in self.val_metrics_history]
         axes[1, 0].plot(epochs, val_mae, 'orange', label='Val MAE', linewidth=2)
         axes[1, 0].set_xlabel('Epoch')
@@ -371,7 +371,7 @@ class FineTuneTrainer:
         axes[1, 0].legend()
         axes[1, 0].grid(True, alpha=0.3)
         
-        # 方向准确率曲线
+        # Direction accuracy curve
         val_dir_acc = [m['direction_accuracy'] for m in self.val_metrics_history]
         axes[1, 1].plot(epochs, val_dir_acc, 'purple', label='Val Direction Acc', linewidth=2)
         axes[1, 1].axhline(y=0.5, color='r', linestyle='--', alpha=0.5, label='Random (50%)')

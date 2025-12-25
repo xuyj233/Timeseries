@@ -1,20 +1,20 @@
 """
-统一训练入口
-支持预训练和微调，支持多种模型结构和数据集
+Unified training entry point
+Supports pretraining and fine-tuning with multiple model structures and datasets
 """
 import os
 import argparse
 import torch
 from torch.utils.data import DataLoader
 
-# 设置镜像
+# Set mirror endpoint
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
 import sys
 from pathlib import Path
 
-# 添加项目根目录到路径
+# Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from models import TimerConfig, TimerForPrediction
@@ -33,16 +33,16 @@ from utils import count_parameters, load_pretrained_model
 
 def create_model_from_config(config_dict, pretrained_path=None):
     """
-    根据配置创建模型
+    Create model from configuration
     
     Args:
-        config_dict: 模型配置字典
-        pretrained_path: 预训练模型路径（如果为None，则从头创建）
+        config_dict: Model configuration dictionary
+        pretrained_path: Path to pretrained model (if None, create from scratch)
     
     Returns:
-        model: Timer模型
+        model: Timer model
     """
-    # 创建模型配置
+    # Create model configuration
     model_config = TimerConfig(
         input_token_len=config_dict.get('input_token_len', 96),
         hidden_size=config_dict.get('hidden_size', 1024),
@@ -54,11 +54,11 @@ def create_model_from_config(config_dict, pretrained_path=None):
     )
     
     if pretrained_path and os.path.exists(pretrained_path):
-        # 加载预训练模型
+        # Load pretrained model
         print(f"Loading pretrained model from: {pretrained_path}")
         model = load_pretrained_model(pretrained_path)
     else:
-        # 从头创建模型
+        # Create model from scratch
         print("Creating model from scratch...")
         model = TimerForPrediction(model_config)
     
@@ -67,14 +67,14 @@ def create_model_from_config(config_dict, pretrained_path=None):
 
 def load_huggingface_model(model_name, use_mirror=True):
     """
-    从HuggingFace加载模型（用于微调）
+    Load model from HuggingFace (for fine-tuning)
     
     Args:
-        model_name: 模型名称（如'thuml/timer-base-84m'）
-        use_mirror: 是否使用镜像
+        model_name: Model name (e.g., 'thuml/timer-base-84m')
+        use_mirror: Whether to use mirror
     
     Returns:
-        model: HuggingFace模型
+        model: HuggingFace model
     """
     if use_mirror:
         os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
@@ -97,11 +97,11 @@ def load_huggingface_model(model_name, use_mirror=True):
 def main():
     parser = argparse.ArgumentParser(description="Unified Timer Training (Pretrain or Finetune)")
     
-    # 训练模式
+    # Training mode
     parser.add_argument("--mode", type=str, choices=['pretrain', 'finetune'], required=True,
                        help="Training mode: pretrain or finetune")
     
-    # 数据相关
+    # Data related
     parser.add_argument("--data-source", type=str, 
                        choices=['local', 'utsd', 'utsd-s3', 'standard', 'csv'],
                        default='local',
@@ -141,7 +141,7 @@ def main():
     parser.add_argument("--pred-len", type=int, default=96,
                        help="Prediction length (default: 96)")
     
-    # 模型相关
+    # Model related
     parser.add_argument("--model-structure", type=str, default="base",
                        choices=['tiny', 'small', 'base', 'large'],
                        help="Model structure size")
@@ -150,7 +150,7 @@ def main():
     parser.add_argument("--huggingface-model", type=str, default="thuml/timer-base-84m",
                        help="HuggingFace model name (for finetune from HF)")
     
-    # 训练配置
+    # Training configuration
     parser.add_argument("--output-dir", type=str, default="outputs",
                        help="Output directory")
     parser.add_argument("--batch-size", type=int, default=4, help="Batch size")
@@ -167,7 +167,7 @@ def main():
     parser.add_argument("--deepspeed-config", type=str, default=None,
                        help="Path to DeepSpeed configuration file (optional, enables DeepSpeed training)")
     
-    # 模型结构配置（可选，覆盖model-structure）
+    # Model structure configuration (optional, overrides model-structure)
     parser.add_argument("--input-token-len", type=int, default=None, help="Input token length")
     parser.add_argument("--hidden-size", type=int, default=None, help="Hidden size")
     parser.add_argument("--intermediate-size", type=int, default=None, help="Intermediate size")
@@ -178,7 +178,7 @@ def main():
     
     args = parser.parse_args()
     
-    # 设备
+    # Device
     if args.device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
@@ -188,7 +188,7 @@ def main():
     print(f"Training mode: {args.mode}")
     print(f"Data source: {args.data_source}")
     
-    # 模型结构配置
+    # Model structure configuration
     model_structures = {
         'tiny': {
             'hidden_size': 256,
@@ -218,12 +218,12 @@ def main():
     
     base_config = model_structures[args.model_structure].copy()
     
-    # 覆盖配置（如果提供了具体参数）
+    # Override configuration (if specific parameters are provided)
     if args.input_token_len is not None:
         base_config['input_token_len'] = args.input_token_len
     else:
-        # 论文中预训练使用N=15作为token数量
-        # 但这里我们使用96作为默认值（可以根据需要调整）
+        # Paper uses N=15 as token count for pretraining
+        # But here we use 96 as default (can be adjusted as needed)
         base_config['input_token_len'] = 96
     
     if args.hidden_size is not None:
@@ -241,16 +241,16 @@ def main():
     
     base_config['max_position_embeddings'] = 10000
     
-    # 加载数据
+    # Load data
     print("\nLoading data...")
     if args.data_source == 'utsd-s3' or (args.data_source == 'utsd' and args.use_s3):
-        # 使用S3格式预处理（推荐用于预训练）
+        # Use S3 format preprocessing (recommended for pretraining)
         print("Using S3 format preprocessing for pretraining...")
         
-        # 确定是否使用缓存
-        use_cache = not args.no_cache  # 默认使用缓存，除非指定--no-cache
+        # Determine whether to use cache
+        use_cache = not args.no_cache  # Use cache by default, unless --no-cache is specified
         
-        # 检查是否存在缓存
+        # Check if cache exists
         cache_dir = args.data_dir
         cache_exists = (
             os.path.exists(os.path.join(cache_dir, "data_config.pkl")) and
@@ -258,12 +258,12 @@ def main():
             os.path.exists(os.path.join(cache_dir, "val_sequences.pkl"))
         )
         
-        # 如果使用缓存且缓存存在，则不下载数据集
+        # If using cache and cache exists, don't download dataset
         if use_cache and cache_exists:
             print(f"\n[INFO] Cache found at {cache_dir}, will try to use it...")
-            hf_dataset = None  # 不需要下载
+            hf_dataset = None  # No need to download
         else:
-            # 下载数据集
+            # Download dataset
             print("\n[INFO] Downloading UTSD dataset...")
             hf_dataset = download_utsd_dataset(
                 dataset_name="thuml/UTSD",
@@ -271,11 +271,11 @@ def main():
                 use_mirror=True
             )
         
-        # 准备S3格式数据
+        # Prepare S3 format data
         train_dataset, val_dataset, data_config = prepare_s3_for_pretraining(
             hf_dataset=hf_dataset['train'] if hf_dataset else None,
             context_length=args.context_length,
-            lookback=base_config.get('input_token_len', 96) * 5,  # 默认5倍input_token_len
+            lookback=base_config.get('input_token_len', 96) * 5,  # Default 5x input_token_len
             pred_len=base_config.get('input_token_len', 96),
             train_ratio=0.9,
             val_ratio=0.1,
@@ -287,7 +287,7 @@ def main():
             use_cache=use_cache
         )
         
-        # 创建数据加载器
+        # Create data loaders
         train_loader = DataLoader(
             train_dataset,
             batch_size=args.batch_size,
@@ -305,10 +305,10 @@ def main():
         
         lookback = data_config['lookback']
         pred_len = data_config['pred_len']
-        test_loader = None  # S3格式主要用于预训练，不提供测试集
+        test_loader = None  # S3 format is mainly for pretraining, no test set provided
         
     elif args.data_source == 'utsd':
-        # 使用UTSD数据集（原始格式）
+        # Use UTSD dataset (original format)
         train_dataset, val_dataset, test_dataset, data_config = prepare_utsd_for_training(
             subset=args.utsd_subset,
             lookback=512,
@@ -318,7 +318,7 @@ def main():
             output_dir=args.data_dir
         )
         
-        # 创建数据加载器
+        # Create data loaders
         train_loader = DataLoader(
             train_dataset,
             batch_size=args.batch_size,
@@ -339,11 +339,11 @@ def main():
         test_loader = None
         
     elif args.data_source == 'standard':
-        # 使用标准数据集（ETTH1, ECL, TRAFFIC等）
+        # Use standard datasets (ETTH1, ECL, TRAFFIC, etc.)
         print("Using standard time series datasets...")
         
         if args.standard_datasets:
-            # 多个数据集
+            # Multiple datasets
             dataset_names = args.standard_datasets
             print(f"Loading multiple datasets: {', '.join(dataset_names)}")
             train_dataset, val_dataset, test_dataset, data_config = prepare_multiple_datasets(
@@ -355,7 +355,7 @@ def main():
                 download=True
             )
         elif args.standard_dataset:
-            # 单个数据集
+            # Single dataset
             print(f"Loading dataset: {args.standard_dataset}")
             train_dataset, val_dataset, test_dataset, data_config = load_standard_dataset(
                 dataset_name=args.standard_dataset,
@@ -367,7 +367,7 @@ def main():
         else:
             raise ValueError("Please specify --standard-dataset or --standard-datasets")
         
-        # 创建数据加载器
+        # Create data loaders
         train_loader = DataLoader(
             train_dataset,
             batch_size=args.batch_size,
@@ -394,7 +394,7 @@ def main():
         pred_len = data_config['pred_len']
         
     elif args.data_source == 'csv':
-        # 使用CSV文件进行S3格式预训练
+        # Use CSV file for S3 format pretraining
         print("Using CSV file for S3 format pretraining...")
         
         if not args.csv_path:
@@ -403,14 +403,14 @@ def main():
         if not os.path.exists(args.csv_path):
             raise FileNotFoundError(f"CSV file not found: {args.csv_path}")
         
-        # 确定是否使用缓存
-        use_cache = not args.no_cache  # 默认使用缓存，除非指定--no-cache
+        # Determine whether to use cache
+        use_cache = not args.no_cache  # Use cache by default, unless --no-cache is specified
         
-        # 准备S3格式数据
+        # Prepare S3 format data
         train_dataset, val_dataset, data_config = prepare_csv_for_pretraining(
             csv_path=args.csv_path,
             context_length=args.context_length,
-            lookback=base_config.get('input_token_len', 96) * 5,  # 默认5倍input_token_len
+            lookback=base_config.get('input_token_len', 96) * 5,  # Default 5x input_token_len
             pred_len=base_config.get('input_token_len', 96),
             train_ratio=0.9,
             val_ratio=0.1,
@@ -424,7 +424,7 @@ def main():
             use_cache=use_cache
         )
         
-        # 创建数据加载器
+        # Create data loaders
         train_loader = DataLoader(
             train_dataset,
             batch_size=args.batch_size,
@@ -442,10 +442,10 @@ def main():
         
         lookback = data_config['lookback']
         pred_len = data_config['pred_len']
-        test_loader = None  # S3格式主要用于预训练，不提供测试集
+        test_loader = None  # S3 format is mainly for pretraining, no test set provided
         
     else:
-        # 使用本地数据
+        # Use local data
         train_loader, val_loader, test_loader, data_config = create_dataloaders(
             args.data_dir,
             batch_size=args.batch_size,
@@ -457,29 +457,29 @@ def main():
     
     print(f"Data loaded: lookback={lookback}, pred_len={pred_len}")
     
-    # 创建或加载模型
+    # Create or load model
     if args.mode == 'pretrain':
-        # 预训练模式：从头训练或继续训练
+        # Pretraining mode: train from scratch or continue training
         model = create_model_from_config(base_config, args.pretrained_model)
     else:
-        # 微调模式
+        # Fine-tuning mode
         if args.pretrained_model and os.path.exists(args.pretrained_model):
-            # 从本地预训练模型微调
+            # Fine-tune from local pretrained model
             print("Fine-tuning from local pretrained model...")
             model = create_model_from_config(base_config, args.pretrained_model)
         else:
-            # 从HuggingFace模型微调
+            # Fine-tune from HuggingFace model
             print("Fine-tuning from HuggingFace model...")
             model = load_huggingface_model(args.huggingface_model, use_mirror=True)
     
-    # 统计参数
+    # Count parameters
     param_stats = count_parameters(model)
     print(f"\nModel Statistics:")
     print(f"  Total parameters: {param_stats['total']:,}")
     print(f"  Trainable parameters: {param_stats['trainable']:,}")
     print(f"  Trainable ratio: {param_stats['trainable_ratio']*100:.2f}%")
     
-    # 训练配置
+    # Training configuration
     train_config = {
         'batch_size': args.batch_size,
         'num_epochs': args.num_epochs,

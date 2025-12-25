@@ -1,5 +1,5 @@
 """
-脚本模块
-包含训练、数据准备等脚本
+Scripts module
+Contains training, data preparation and other scripts
 """
 

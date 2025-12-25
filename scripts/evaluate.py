@@ -1,6 +1,6 @@
 """
-模型评测脚本
-在标准时间序列数据集上评估模型性能
+Model evaluation script
+Evaluate model performance on standard time series datasets
 """
 import os
 import argparse
@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 import sys
 from pathlib import Path
 
-# 添加项目根目录到路径
+# Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from models import TimerConfig, TimerForPrediction
@@ -20,15 +20,15 @@ from utils import load_pretrained_model, count_parameters
 
 def calculate_metrics(predictions, targets, mask=None):
     """
-    计算评估指标
+    Calculate evaluation metrics
     
     Args:
-        predictions: 预测值 (batch_size, pred_len, n_features)
-        targets: 真实值 (batch_size, pred_len, n_features)
-        mask: 掩码（可选）
+        predictions: Predicted values (batch_size, pred_len, n_features)
+        targets: True values (batch_size, pred_len, n_features)
+        mask: Mask (optional)
     
     Returns:
-        dict: 包含各种指标的字典
+        dict: Dictionary containing various metrics
     """
     if mask is not None:
         predictions = predictions * mask
@@ -37,32 +37,32 @@ def calculate_metrics(predictions, targets, mask=None):
     else:
         valid_count = predictions.numel()
     
-    # 转换为numpy
+    # Convert to numpy
     pred_np = predictions.detach().cpu().numpy()
     target_np = targets.detach().cpu().numpy()
     
-    # 计算MSE
+    # Calculate MSE
     mse = np.mean((pred_np - target_np) ** 2)
     
-    # 计算MAE
+    # Calculate MAE
     mae = np.mean(np.abs(pred_np - target_np))
     
-    # 计算RMSE
+    # Calculate RMSE
     rmse = np.sqrt(mse)
     
-    # 计算MAPE（避免除零）
+    # Calculate MAPE (avoid division by zero)
     epsilon = 1e-8
     mape = np.mean(np.abs((target_np - pred_np) / (target_np + epsilon))) * 100
     
-    # 计算方向准确率（Direction Accuracy）
+    # Calculate direction accuracy (Direction Accuracy)
     if pred_np.shape[-1] == 1:
-        # 单变量：计算方向
+        # Univariate: calculate direction
         pred_diff = np.diff(pred_np.squeeze(-1), axis=1)
         target_diff = np.diff(target_np.squeeze(-1), axis=1)
         direction_correct = np.sign(pred_diff) == np.sign(target_diff)
         direction_acc = np.mean(direction_correct) * 100
     else:
-        # 多变量：对每个变量计算方向准确率
+        # Multivariate: calculate direction accuracy for each variable
         direction_accs = []
         for i in range(pred_np.shape[-1]):
             pred_diff = np.diff(pred_np[:, :, i], axis=1)
@@ -82,16 +82,16 @@ def calculate_metrics(predictions, targets, mask=None):
 
 def evaluate_model(model, test_loader, device, dataset_name="Unknown"):
     """
-    评估模型在测试集上的性能
+    Evaluate model performance on test set
     
     Args:
-        model: 模型
-        test_loader: 测试数据加载器
-        device: 设备
-        dataset_name: 数据集名称
+        model: Model
+        test_loader: Test data loader
+        device: Device
+        dataset_name: Dataset name
     
     Returns:
-        dict: 评估指标
+        dict: Evaluation metrics
     """
     model.eval()
     all_predictions = []
@@ -102,12 +102,12 @@ def evaluate_model(model, test_loader, device, dataset_name="Unknown"):
     
     with torch.no_grad():
         for batch_idx, batch_data in enumerate(test_loader):
-            # 安全地解包数据（处理可能返回额外值的情况）
+            # Safely unpack data (handle cases where extra values are returned)
             if isinstance(batch_data, (tuple, list)):
                 if len(batch_data) == 2:
                     history, target = batch_data
                 elif len(batch_data) > 2:
-                    # 如果返回超过2个值，只取前两个
+                    # If more than 2 values returned, only take the first two
                     history, target = batch_data[0], batch_data[1]
                 else:
                     print(f"Warning: Unexpected batch data length: {len(batch_data)}")
@@ -119,11 +119,11 @@ def evaluate_model(model, test_loader, device, dataset_name="Unknown"):
             history = history.to(device)
             target = target.to(device)
             
-            # 生成预测
-            # Timer模型在推理模式下，使用history作为输入，生成pred_len长度的预测
+            # Generate predictions
+            # Timer model in inference mode uses history as input, generates pred_len length predictions
             pred_len = target.shape[1]
             
-            # 调用模型进行预测（推理模式）
+            # Call model for prediction (inference mode)
             try:
                 outputs = model(
                     input_ids=history,
@@ -134,56 +134,56 @@ def evaluate_model(model, test_loader, device, dataset_name="Unknown"):
                 
                 predictions = outputs.logits
                 
-                # Timer模型在推理模式下：
+                # Timer model in inference mode:
                 # predictions = lm_head(hidden_states)[:, -1, :] 
-                # 返回形状是 (batch_size, output_token_len)，其中output_token_len是每个token的预测长度
-                # 但我们需要的是 (batch_size, pred_len, n_features)
-                # 注意：Timer使用patch embedding，每个patch的长度是input_token_len
+                # Returns shape (batch_size, output_token_len), where output_token_len is prediction length per token
+                # But we need (batch_size, pred_len, n_features)
+                # Note: Timer uses patch embedding, each patch length is input_token_len
                 
                 batch_size = history.shape[0]
                 n_features = history.shape[-1]
                 
                 if predictions is not None:
-                    # Timer模型的predictions形状是 (batch_size, output_token_len)
-                    # output_token_len是每个patch的预测长度，不是时间步数
-                    # 我们需要将其reshape为 (batch_size, num_patches, output_token_len)
-                    # 然后reshape为 (batch_size, total_pred_len, n_features)
+                    # Timer model predictions shape is (batch_size, output_token_len)
+                    # output_token_len is prediction length per patch, not number of time steps
+                    # We need to reshape to (batch_size, num_patches, output_token_len)
+                    # Then reshape to (batch_size, total_pred_len, n_features)
                     
                     if len(predictions.shape) == 2:
                         # predictions: (batch_size, output_token_len)
-                        # 需要reshape为 (batch_size, 1, output_token_len) 然后展开
-                        # 但实际Timer返回的可能是已经处理过的
+                        # Need to reshape to (batch_size, 1, output_token_len) then expand
+                        # But actual Timer return may already be processed
                         
-                        # 尝试理解：如果output_token_len = 96, pred_len = 96
-                        # 那么predictions可能是 (batch_size, 96)，需要reshape为 (batch_size, 96, 1)
-                        # 或者如果output_token_len = pred_len * n_features，需要reshape
+                        # Try to understand: if output_token_len = 96, pred_len = 96
+                        # Then predictions might be (batch_size, 96), need reshape to (batch_size, 96, 1)
+                        # Or if output_token_len = pred_len * n_features, need reshape
                         
                         output_token_len = predictions.shape[1]
                         
-                        # 如果output_token_len等于pred_len，说明每个时间步预测一个值
+                        # If output_token_len equals pred_len, each time step predicts one value
                         if output_token_len == pred_len:
                             # (batch_size, pred_len) -> (batch_size, pred_len, 1)
                             predictions = predictions.unsqueeze(-1)
-                            # 如果n_features > 1，需要扩展
+                            # If n_features > 1, need to expand
                             if n_features > 1:
                                 predictions = predictions.repeat(1, 1, n_features)
                         elif output_token_len == pred_len * n_features:
                             # (batch_size, pred_len * n_features) -> (batch_size, pred_len, n_features)
                             predictions = predictions.view(batch_size, pred_len, n_features)
                         else:
-                            # 其他情况：假设是单变量预测，扩展特征维度
+                            # Other cases: assume univariate prediction, expand feature dimension
                             if output_token_len >= pred_len:
                                 predictions = predictions[:, :pred_len].unsqueeze(-1)
                                 if n_features > 1:
                                     predictions = predictions.repeat(1, 1, n_features)
                             else:
-                                # 长度不足，填充
+                                # Insufficient length, pad
                                 padding = torch.zeros(batch_size, pred_len - output_token_len, device=device)
                                 predictions = torch.cat([predictions, padding], dim=1).unsqueeze(-1)
                                 if n_features > 1:
                                     predictions = predictions.repeat(1, 1, n_features)
                     elif len(predictions.shape) == 3:
-                        # 已经是3D，直接调整
+                        # Already 3D, directly adjust
                         if predictions.shape[1] > pred_len:
                             predictions = predictions[:, :pred_len, :]
                         elif predictions.shape[1] < pred_len:
@@ -191,7 +191,7 @@ def evaluate_model(model, test_loader, device, dataset_name="Unknown"):
                             padding = last_step.repeat(1, pred_len - predictions.shape[1], 1)
                             predictions = torch.cat([predictions, padding], dim=1)
                         
-                        # 调整特征维度
+                        # Adjust feature dimension
                         if predictions.shape[-1] != n_features:
                             if predictions.shape[-1] > n_features:
                                 predictions = predictions[:, :, :n_features]
@@ -204,31 +204,31 @@ def evaluate_model(model, test_loader, device, dataset_name="Unknown"):
                                 )
                                 predictions = torch.cat([predictions, padding], dim=-1)
                 else:
-                    # 如果logits为None，使用零填充
+                    # If logits is None, use zero padding
                     predictions = torch.zeros(batch_size, pred_len, n_features, device=device)
                     
             except Exception as e:
-                # 如果预测失败，使用零填充
-                if batch_idx % 10 == 0:  # 只打印部分警告，避免刷屏
+                # If prediction fails, use zero padding
+                if batch_idx % 10 == 0:  # Only print some warnings to avoid flooding
                     print(f"Warning: Prediction failed for batch {batch_idx}: {str(e)}")
                 batch_size, _, n_features = history.shape
                 predictions = torch.zeros(batch_size, pred_len, n_features, device=device)
             
-            # 最终确保预测形状与目标匹配
+            # Finally ensure prediction shape matches target
             if predictions.shape[1] != target.shape[1]:
                 if predictions.shape[1] > target.shape[1]:
                     predictions = predictions[:, :target.shape[1], :]
                 else:
-                    # 填充（使用最后一个预测值）
+                    # Pad (using last prediction value)
                     padding = predictions[:, -1:, :].repeat(1, target.shape[1] - predictions.shape[1], 1)
                     predictions = torch.cat([predictions, padding], dim=1)
             
-            # 确保特征维度匹配
+            # Ensure feature dimension matches
             if predictions.shape[-1] != target.shape[-1]:
                 if predictions.shape[-1] > target.shape[-1]:
                     predictions = predictions[:, :, :target.shape[-1]]
                 else:
-                    # 如果特征维度不足，使用零填充
+                    # If feature dimension insufficient, use zero padding
                     padding = torch.zeros(
                         predictions.shape[0], 
                         predictions.shape[1], 
@@ -243,11 +243,11 @@ def evaluate_model(model, test_loader, device, dataset_name="Unknown"):
             if (batch_idx + 1) % 10 == 0:
                 print(f"  Processed {batch_idx + 1}/{len(test_loader)} batches")
     
-    # 合并所有预测
+    # Concatenate all predictions
     all_predictions = torch.cat(all_predictions, dim=0)
     all_targets = torch.cat(all_targets, dim=0)
     
-    # 计算指标
+    # Calculate metrics
     metrics = calculate_metrics(all_predictions, all_targets)
     
     return metrics, all_predictions, all_targets
@@ -256,13 +256,13 @@ def evaluate_model(model, test_loader, device, dataset_name="Unknown"):
 def main():
     parser = argparse.ArgumentParser(description="Evaluate Timer model on standard datasets")
     
-    # 模型相关
+    # Model related
     parser.add_argument("--model-path", type=str, required=True,
                        help="Path to pretrained model directory (containing model.pt and config.json)")
     parser.add_argument("--huggingface-model", type=str, default=None,
                        help="HuggingFace model name (alternative to --model-path)")
     
-    # 数据集相关
+    # Dataset related
     parser.add_argument("--dataset", type=str, default=None,
                        choices=['ETTH1', 'ETTH2', 'ETTM1', 'ETTM2', 'ECL', 'TRAFFIC', 'WEATHER', 
                                'PEMS03', 'PEMS04', 'PEMS07', 'PEMS08'],
@@ -272,7 +272,7 @@ def main():
     parser.add_argument("--data-dir", type=str, default="data/standard_datasets",
                        help="Data directory")
     
-    # 评估参数
+    # Evaluation parameters
     parser.add_argument("--lookback", type=int, default=672,
                        help="Lookback length (default: 672)")
     parser.add_argument("--pred-len", type=int, default=96,
@@ -286,7 +286,7 @@ def main():
     
     args = parser.parse_args()
     
-    # 设备
+    # Device
     if args.device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
@@ -294,7 +294,7 @@ def main():
     
     print(f"Using device: {device}")
     
-    # 加载模型
+    # Load model
     print("\nLoading model...")
     if args.huggingface_model:
         from transformers import AutoModelForCausalLM
@@ -311,37 +311,37 @@ def main():
     else:
         raise ValueError("Please specify either --model-path or --huggingface-model")
     
-    # 统计参数
+    # Count parameters
     param_stats = count_parameters(model)
     print(f"\nModel Statistics:")
     print(f"  Total parameters: {param_stats['total']:,}")
     print(f"  Trainable parameters: {param_stats['trainable']:,}")
     
-    # 确定要评估的数据集
+    # Determine datasets to evaluate
     if args.datasets:
         dataset_names = args.datasets
     elif args.dataset:
         dataset_names = [args.dataset]
     else:
-        # 默认评估所有提到的数据集
+        # Default: evaluate all mentioned datasets
         dataset_names = ['ETTH1', 'ECL', 'TRAFFIC', 'WEATHER', 'PEMS03', 'PEMS04']
     
     print(f"\nDatasets to evaluate: {', '.join(dataset_names)}")
     
-    # 创建输出目录
+    # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
     
-    # 评估结果
+    # Evaluation results
     all_results = {}
     
-    # 逐个评估每个数据集
+    # Evaluate each dataset one by one
     for dataset_name in dataset_names:
         print(f"\n{'='*60}")
         print(f"Evaluating on {dataset_name}")
         print(f"{'='*60}")
         
         try:
-            # 加载数据集
+            # Load dataset
             train_dataset, val_dataset, test_dataset, data_config = load_standard_dataset(
                 dataset_name=dataset_name,
                 lookback=args.lookback,
@@ -350,7 +350,7 @@ def main():
                 download=True
             )
             
-            # 创建测试数据加载器
+            # Create test data loader
             test_loader = DataLoader(
                 test_dataset,
                 batch_size=args.batch_size,
@@ -359,15 +359,15 @@ def main():
                 pin_memory=(device.type == 'cuda')
             )
             
-            # 评估模型
+            # Evaluate model
             metrics, predictions, targets = evaluate_model(
                 model, test_loader, device, dataset_name
             )
             
-            # 保存结果
+            # Save results
             all_results[dataset_name] = metrics
             
-            # 打印结果
+            # Print results
             print(f"\n{dataset_name} Results:")
             print(f"  MSE:  {metrics['MSE']:.6f}")
             print(f"  MAE:  {metrics['MAE']:.6f}")
@@ -381,7 +381,7 @@ def main():
             traceback.print_exc()
             all_results[dataset_name] = {'error': str(e)}
     
-    # 保存所有结果
+    # Save all results
     import json
     results_file = os.path.join(args.output_dir, "evaluation_results.json")
     with open(results_file, 'w') as f:
@@ -391,7 +391,7 @@ def main():
     print("Evaluation Summary")
     print(f"{'='*60}")
     
-    # 打印汇总表格
+    # Print summary table
     print(f"\n{'Dataset':<15} {'MSE':<12} {'MAE':<12} {'RMSE':<12} {'MAPE':<10} {'Dir Acc':<10}")
     print("-" * 75)
     
@@ -402,7 +402,7 @@ def main():
         else:
             print(f"{dataset_name:<15} Error: {metrics['error']}")
     
-    # 计算平均值（排除错误）
+    # Calculate average (excluding errors)
     valid_results = {k: v for k, v in all_results.items() if 'error' not in v}
     if valid_results:
         avg_metrics = {

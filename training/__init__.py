@@ -1,5 +1,5 @@
 """
-训练模块
+Training module
 """
 from .trainer import Trainer
 from .finetune_trainer import FineTuneTrainer

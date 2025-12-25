@@ -1,5 +1,5 @@
 """
-数据处理模块
+Data processing module
 """
 from .dataset import TimeSeriesDataset
 from .data_loader import create_dataloaders
