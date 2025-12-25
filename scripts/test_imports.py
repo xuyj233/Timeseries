@@ -1,23 +1,22 @@
 """
-测试脚本：验证所有导入是否正常
 Test script: Verify all imports work correctly
 """
 import sys
 import os
 from pathlib import Path
 
-# 添加项目根目录到路径
+# Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def test_imports():
-    """测试所有关键模块的导入"""
+    """Test imports of all key modules"""
     print("=" * 60)
     print("Testing Imports")
     print("=" * 60)
     
     errors = []
     
-    # 测试基础依赖
+    # Test basic dependencies
     print("\n1. Testing basic dependencies...")
     try:
         import torch
@@ -61,7 +60,7 @@ def test_imports():
         errors.append(f"matplotlib: {str(e)}")
         print(f"   [FAIL] matplotlib: {str(e)}")
     
-    # 测试项目模块
+    # Test project modules
     print("\n2. Testing project modules...")
     try:
         from models import TimerConfig, TimerForPrediction
@@ -106,7 +105,7 @@ def test_imports():
         errors.append(f"utils: {str(e)}")
         print(f"   [FAIL] utils: {str(e)}")
     
-    # 测试CUDA
+    # Test CUDA
     print("\n3. Testing CUDA...")
     try:
         import torch
@@ -121,7 +120,7 @@ def test_imports():
     except Exception as e:
         print(f"   [FAIL] CUDA check failed: {str(e)}")
     
-    # 总结
+    # Summary
     print("\n" + "=" * 60)
     if errors:
         print(f"[FAIL] Tests failed! Found {len(errors)} errors:")
@@ -136,7 +135,7 @@ def test_imports():
 
 
 def test_model_creation():
-    """测试模型创建"""
+    """Test model creation"""
     print("\n" + "=" * 60)
     print("Testing Model Creation")
     print("=" * 60)
@@ -144,7 +143,7 @@ def test_model_creation():
     try:
         from models import TimerConfig, TimerForPrediction
         
-        # 创建一个小模型用于测试
+        # Create a small model for testing
         config = TimerConfig(
             input_token_len=96,
             hidden_size=256,
@@ -156,7 +155,7 @@ def test_model_creation():
         
         model = TimerForPrediction(config)
         
-        # 统计参数
+        # Count parameters
         total_params = sum(p.numel() for p in model.parameters())
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         
@@ -178,11 +177,11 @@ if __name__ == "__main__":
     print("           TIMER Project Test Suite")
     print("=" * 60)
     
-    # 运行测试
+    # Run tests
     import_success = test_imports()
     model_success = test_model_creation()
     
-    # 最终结果
+    # Final results
     print("\n" + "=" * 60)
     print("Final Results")
     print("=" * 60)
