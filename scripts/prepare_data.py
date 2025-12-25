@@ -1,10 +1,10 @@
 """
-数据准备脚本：将时间序列数据转换为 TIMER 模型训练所需的格式
+Data preparation script: Convert time series data to format required for TIMER model training
 """
 import os
 import sys
 
-# 设置镜像（如果需要加载模型相关配置）
+# Set mirror (if needed for loading model-related configurations)
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
@@ -15,17 +15,17 @@ from torch.utils.data import Dataset, DataLoader
 import pickle
 from pathlib import Path
 
-# 添加父目录到路径，以便导入数据
+# Add parent directory to path for importing data
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 class TimeSeriesDataset(Dataset):
-    """时间序列数据集类"""
+    """Time series dataset class"""
     def __init__(self, sequences, lookback, pred_len):
         """
         Args:
-            sequences: 时间序列数据 (list of arrays)
-            lookback: 历史数据长度
-            pred_len: 预测长度
+            sequences: Time series data (list of arrays)
+            lookback: Historical data length
+            pred_len: Prediction length
         """
         self.sequences = sequences
         self.lookback = lookback
@@ -36,24 +36,24 @@ class TimeSeriesDataset(Dataset):
     
     def __getitem__(self, idx):
         seq = self.sequences[idx]
-        # 前 lookback 个点作为输入
+        # First lookback points as input
         history = seq[:self.lookback]
-        # 后 pred_len 个点作为目标（teacher forcing 训练）
+        # Last pred_len points as target (teacher forcing training)
         target = seq[self.lookback:self.lookback + self.pred_len]
         
         return torch.tensor(history, dtype=torch.float32), torch.tensor(target, dtype=torch.float32)
 
 
 def load_data(csv_path):
-    """加载原始数据并转换为收益率序列"""
+    """Load raw data and convert to return series"""
     print(f"Loading data from: {csv_path}")
     df = pd.read_csv(csv_path)
     
-    # 最后一列（Close价格）
+    # Last column (Close price)
     close = df[df.columns[-1]]
     print(f"Close price range: {close.min():.2f} - {close.max():.2f}")
     
-    # 转收益率
+    # Convert to returns
     returns = close.pct_change().dropna().reset_index(drop=True)
     series = returns.astype(float).values
     
@@ -66,20 +66,20 @@ def load_data(csv_path):
 
 def create_segments(series, lookback, pred_len, stride=None, max_samples=None):
     """
-    将时间序列拆分为训练片段
+    Split time series into training segments
     
     Args:
-        series: 时间序列数组
-        lookback: 历史数据长度
-        pred_len: 预测长度
-        stride: 滑动步长（None 表示非重叠）
-        max_samples: 最大样本数（None 表示使用所有可能样本）
+        series: Time series array
+        lookback: Historical data length
+        pred_len: Prediction length
+        stride: Sliding step size (None means non-overlapping)
+        max_samples: Maximum number of samples (None means use all possible samples)
     
     Returns:
-        segments: 片段列表，每个片段长度为 lookback + pred_len
+        segments: List of segments, each segment length is lookback + pred_len
     """
     if stride is None:
-        stride = lookback + pred_len  # 非重叠
+        stride = lookback + pred_len  # Non-overlapping
     
     segments = []
     segment_length = lookback + pred_len
@@ -98,18 +98,18 @@ def create_segments(series, lookback, pred_len, stride=None, max_samples=None):
 
 def split_train_val_test(segments, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
     """
-    划分训练集、验证集和测试集
+    Split into training, validation and test sets
     
     Args:
-        segments: 所有片段
-        train_ratio: 训练集比例
-        val_ratio: 验证集比例
-        test_ratio: 测试集比例
+        segments: All segments
+        train_ratio: Training set ratio
+        val_ratio: Validation set ratio
+        test_ratio: Test set ratio
     
     Returns:
         train_segments, val_segments, test_segments
     """
-    assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6, "比例之和必须为1"
+    assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6, "Ratios must sum to 1"
     
     n = len(segments)
     n_train = int(n * train_ratio)
@@ -126,30 +126,30 @@ def prepare_datasets(csv_path, lookback=512, pred_len=96, stride=None,
                      max_samples=None, train_ratio=0.7, val_ratio=0.15, 
                      test_ratio=0.15, output_dir="data"):
     """
-    准备完整的数据集
+    Prepare complete dataset
     
     Args:
-        csv_path: 原始数据 CSV 路径
-        lookback: 历史数据长度
-        pred_len: 预测长度
-        stride: 滑动步长
-        max_samples: 最大样本数
-        train_ratio: 训练集比例
-        val_ratio: 验证集比例
-        test_ratio: 测试集比例
-        output_dir: 输出目录
+        csv_path: Raw data CSV path
+        lookback: Historical data length
+        pred_len: Prediction length
+        stride: Sliding step size
+        max_samples: Maximum number of samples
+        train_ratio: Training set ratio
+        val_ratio: Validation set ratio
+        test_ratio: Test set ratio
+        output_dir: Output directory
     
     Returns:
         train_dataset, val_dataset, test_dataset, scaler_info
     """
-    # 创建输出目录
+    # Create output directory
     os.makedirs(output_dir, exist_ok=True)
     
-    # 加载数据
+    # Load data
     series = load_data(csv_path)
     
-    # 数据标准化（可选，TIMER 通常不需要，但可以尝试）
-    # 这里我们保存统计信息，但不进行标准化，让模型自己学习
+    # Data standardization (optional, TIMER usually doesn't need it, but can try)
+    # Here we save statistics but don't standardize, let the model learn by itself
     scaler_info = {
         'mean': float(series.mean()),
         'std': float(series.std()),
@@ -157,12 +157,12 @@ def prepare_datasets(csv_path, lookback=512, pred_len=96, stride=None,
         'max': float(series.max())
     }
     
-    # 创建片段
+    # Create segments
     print(f"\nCreating segments with lookback={lookback}, pred_len={pred_len}, stride={stride}")
     segments = create_segments(series, lookback, pred_len, stride, max_samples)
     print(f"Created {len(segments)} segments")
     
-    # 划分数据集
+    # Split dataset
     train_segments, val_segments, test_segments = split_train_val_test(
         segments, train_ratio, val_ratio, test_ratio
     )
@@ -172,12 +172,12 @@ def prepare_datasets(csv_path, lookback=512, pred_len=96, stride=None,
     print(f"  Val: {len(val_segments)} segments")
     print(f"  Test: {len(test_segments)} segments")
     
-    # 创建数据集对象
+    # Create dataset objects
     train_dataset = TimeSeriesDataset(train_segments, lookback, pred_len)
     val_dataset = TimeSeriesDataset(val_segments, lookback, pred_len)
     test_dataset = TimeSeriesDataset(test_segments, lookback, pred_len)
     
-    # 保存数据集
+    # Save datasets
     print(f"\nSaving datasets to {output_dir}...")
     with open(os.path.join(output_dir, "train_dataset.pkl"), "wb") as f:
         pickle.dump(train_segments, f)
@@ -186,11 +186,11 @@ def prepare_datasets(csv_path, lookback=512, pred_len=96, stride=None,
     with open(os.path.join(output_dir, "test_dataset.pkl"), "wb") as f:
         pickle.dump(test_segments, f)
     
-    # 保存统计信息
+    # Save statistics
     with open(os.path.join(output_dir, "scaler_info.pkl"), "wb") as f:
         pickle.dump(scaler_info, f)
     
-    # 保存配置信息
+    # Save configuration information
     config = {
         'lookback': lookback,
         'pred_len': pred_len,

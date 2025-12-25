@@ -1,6 +1,6 @@
 """
-Timer模型完整实现
-支持从头预训练
+Timer model complete implementation
+Supports pretraining from scratch
 """
 from typing import Optional, Tuple, List, Union
 from dataclasses import dataclass
@@ -16,14 +16,14 @@ from .timer_config import TimerConfig
 
 
 def rotate_half(x):
-    """旋转半角用于RoPE"""
+    """Rotate half angle for RoPE"""
     x1 = x[..., : x.shape[-1] // 2]
     x2 = x[..., x.shape[-1] // 2:]
     return torch.cat((-x2, x1), dim=-1)
 
 
 def apply_rotary_pos_emb(q, k, cos, sin, position_ids, unsqueeze_dim=1):
-    """应用旋转位置编码"""
+    """Apply rotary position encoding"""
     cos = cos[position_ids].unsqueeze(unsqueeze_dim)
     sin = sin[position_ids].unsqueeze(unsqueeze_dim)
     q_embed = (q * cos) + (rotate_half(q) * sin)
@@ -32,54 +32,54 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids, unsqueeze_dim=1):
 
 
 class TimerPatchEmbedding(nn.Module):
-    """Timer的Patch Embedding层"""
+    """Timer's Patch Embedding layer"""
     def __init__(self, config: TimerConfig):
         super().__init__()
         self.input_token_len = config.input_token_len
         self.emb = nn.Linear(config.input_token_len, config.hidden_size, bias=False)
 
     def forward(self, hidden_state: torch.Tensor):
-        # hidden_state可以是2D (batch_size, seq_length) 或 3D (batch_size, seq_length, n_features)
-        # 对于多变量数据，我们在时间维度上进行patching
+        # hidden_state can be 2D (batch_size, seq_length) or 3D (batch_size, seq_length, n_features)
+        # For multivariate data, we perform patching on the time dimension
         
         if hidden_state.ndim == 2:
-            # 单变量: (batch_size, seq_length)
-            # 将序列分割成patches
+            # Univariate: (batch_size, seq_length)
+            # Split sequence into patches
             hidden_state = hidden_state.unfold(
                 dimension=-1, size=self.input_token_len, step=self.input_token_len)
-            # 形状: (batch_size, num_patches, input_token_len)
+            # Shape: (batch_size, num_patches, input_token_len)
         elif hidden_state.ndim == 3:
-            # 多变量: (batch_size, seq_length, n_features)
-            # 需要在时间维度（dimension=1）上进行patching
+            # Multivariate: (batch_size, seq_length, n_features)
+            # Need to perform patching on time dimension (dimension=1)
             batch_size, seq_length, n_features = hidden_state.shape
             
-            # 方法：对每个特征独立进行patching，然后合并
-            # 先转置: (batch_size, n_features, seq_length)
+            # Method: patch each feature independently, then merge
+            # First transpose: (batch_size, n_features, seq_length)
             hidden_state = hidden_state.transpose(1, 2)
             
-            # 在seq_length维度上unfold
+            # Unfold on seq_length dimension
             # unfold: (batch_size, n_features, num_patches, input_token_len)
             hidden_state = hidden_state.unfold(
                 dimension=-1, size=self.input_token_len, step=self.input_token_len)
             
-            # 重排为: (batch_size, num_patches, n_features * input_token_len)
+            # Reshape to: (batch_size, num_patches, n_features * input_token_len)
             batch_size, n_features, num_patches, patch_len = hidden_state.shape
             hidden_state = hidden_state.permute(0, 2, 1, 3)  # (batch, num_patches, n_features, patch_len)
             hidden_state = hidden_state.reshape(batch_size, num_patches, n_features * patch_len)
             
-            # 注意：这里需要调整embedding层来处理n_features * input_token_len的输入
-            # 或者我们可以对每个特征分别embedding然后合并
-            # 为简单起见，我们只取第一个特征（或者平均）
-            # 更好的方案是修改为每个特征单独处理
+            # Note: Here we need to adjust embedding layer to handle n_features * input_token_len input
+            # Or we can embed each feature separately then merge
+            # For simplicity, we only take the first feature (or average)
+            # Better solution is to modify to process each feature separately
             
-            # 简化方案：在特征维度上平均
+            # Simplified solution: average over feature dimension
             hidden_state = hidden_state.view(batch_size, num_patches, n_features, patch_len).mean(dim=2)
         
         return self.emb(hidden_state)
 
 
 class TimeMoeRotaryEmbedding(nn.Module):
-    """RoPE位置编码"""
+    """RoPE position encoding"""
     def __init__(self, dim, max_position_embeddings=10000, base=10000, device=None):
         super().__init__()
         self.dim = dim
@@ -161,7 +161,7 @@ class TimerAttention(nn.Module):
 
 
 class TimerMLP(nn.Module):
-    """Timer的MLP层（使用SwiGLU激活）"""
+    """Timer's MLP layer (uses SwiGLU activation)"""
     def __init__(self, hidden_size: int, intermediate_size: int, hidden_act: str):
         super().__init__()
         self.gate_proj = nn.Linear(hidden_size, intermediate_size, bias=False)
@@ -174,7 +174,7 @@ class TimerMLP(nn.Module):
 
 
 class TimerDecoderLayer(nn.Module):
-    """Timer的解码器层"""
+    """Timer's decoder layer"""
     def __init__(self, config: TimerConfig, layer_idx: int):
         super().__init__()
         self.self_attn = TimerAttention(config, layer_idx)
@@ -243,7 +243,7 @@ class TimerPreTrainedModel(PreTrainedModel):
 
 
 class TimerModel(TimerPreTrainedModel):
-    """Timer基础模型"""
+    """Timer base model"""
     def __init__(self, config: TimerConfig):
         super().__init__(config)
         self.embed_layer = TimerPatchEmbedding(config)
@@ -381,7 +381,7 @@ class CausalLMOutputWithPast(ModelOutput):
 
 
 class TimerForPrediction(TimerPreTrainedModel):
-    """Timer预测模型（用于预训练和微调）"""
+    """Timer prediction model (for pretraining and fine-tuning)"""
     def __init__(self, config: TimerConfig):
         super().__init__(config)
         self.config = config
@@ -444,7 +444,7 @@ class TimerForPrediction(TimerPreTrainedModel):
                     predictions = one_predictions
             loss = ar_loss / len(self.config.output_token_lens)
         else:
-            # 推理模式：生成预测
+            # Inference mode: generate predictions
             if max_output_length is None:
                 output_token_len = self.config.output_token_lens[0]
                 max_output_length = output_token_len

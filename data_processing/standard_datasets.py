@@ -1,6 +1,6 @@
 """
-标准时间序列数据集支持
-支持ETTH1, ECL, TRAFFIC, WEATHER, PEMS03, PEMS04等数据集
+Standard time series dataset support
+Supports ETTH1, ECL, TRAFFIC, WEATHER, PEMS03, PEMS04 and other datasets
 """
 import os
 import numpy as np
@@ -13,15 +13,15 @@ import pickle
 
 class StandardTimeSeriesDataset(Dataset):
     """
-    标准时间序列数据集
-    支持多个标准时间序列预测数据集
+    Standard time series dataset
+    Supports multiple standard time series forecasting datasets
     """
     
-    # 数据集信息
+    # Dataset information
     DATASET_INFO = {
         'ETTH1': {
             'url': 'https://raw.githubusercontent.com/zhouhaoyi/ETDataset/main/ETT-small/ETTh1.csv',
-            'target_cols': None,  # 使用所有列
+            'target_cols': None,  # Use all columns
             'date_col': 'date'
         },
         'ETTH2': {
@@ -132,15 +132,15 @@ class StandardTimeSeriesDataset(Dataset):
     
     def __getitem__(self, idx):
         seq = self.sequences[idx]
-        # 前 lookback 个点作为输入
+        # First lookback points as input
         history = seq[:self.lookback]
-        # 后 pred_len 个点作为目标
+        # Last pred_len points as target
         target = seq[self.lookback:self.lookback + self.pred_len]
         
         return torch.tensor(history, dtype=torch.float32), torch.tensor(target, dtype=torch.float32)
     
     def inverse_transform(self, data):
-        """反归一化"""
+        """Denormalize"""
         if self.scale and self.mean is not None and self.std is not None:
             return data * self.std + self.mean
         return data
@@ -148,14 +148,14 @@ class StandardTimeSeriesDataset(Dataset):
 
 def download_dataset(dataset_name: str, data_dir: str = "data/standard_datasets") -> str:
     """
-    下载标准数据集
+    Download standard dataset
     
     Args:
-        dataset_name: 数据集名称
-        data_dir: 数据保存目录
+        dataset_name: Dataset name
+        data_dir: Data save directory
     
     Returns:
-        csv_path: CSV文件路径
+        csv_path: CSV file path
     """
     import urllib.request
     
@@ -166,12 +166,12 @@ def download_dataset(dataset_name: str, data_dir: str = "data/standard_datasets"
     
     csv_path = os.path.join(data_dir, f"{dataset_name}.csv")
     
-    # 如果文件已存在，直接返回
+    # If file already exists, return directly
     if os.path.exists(csv_path):
         print(f"Dataset {dataset_name} already exists at {csv_path}")
         return csv_path
     
-    # 下载数据集
+    # Download dataset
     url = StandardTimeSeriesDataset.DATASET_INFO[dataset_name]['url']
     print(f"Downloading {dataset_name} from {url}...")
     
@@ -196,22 +196,22 @@ def load_standard_dataset(
     download: bool = True
 ) -> Tuple[StandardTimeSeriesDataset, StandardTimeSeriesDataset, StandardTimeSeriesDataset, dict]:
     """
-    加载标准时间序列数据集
+    Load standard time series dataset
     
     Args:
-        dataset_name: 数据集名称 (ETTH1, ECL, TRAFFIC, WEATHER, PEMS03, PEMS04等)
-        lookback: 历史数据长度
-        pred_len: 预测长度
-        train_ratio: 训练集比例
-        val_ratio: 验证集比例
-        test_ratio: 测试集比例
-        data_dir: 数据目录
-        download: 如果数据集不存在，是否下载
+        dataset_name: Dataset name (ETTH1, ECL, TRAFFIC, WEATHER, PEMS03, PEMS04, etc.)
+        lookback: Historical data length
+        pred_len: Prediction length
+        train_ratio: Training set ratio
+        val_ratio: Validation set ratio
+        test_ratio: Test set ratio
+        data_dir: Data directory
+        download: Whether to download if dataset doesn't exist
     
     Returns:
         train_dataset, val_dataset, test_dataset, data_config
     """
-    # 下载数据集（如果需要）
+    # Download dataset (if needed)
     if download:
         csv_path = download_dataset(dataset_name, data_dir)
     else:
@@ -219,25 +219,25 @@ def load_standard_dataset(
         if not os.path.exists(csv_path):
             raise FileNotFoundError(f"Dataset not found: {csv_path}. Set download=True to download.")
     
-    # 读取CSV文件
+    # Read CSV file
     print(f"Loading {dataset_name} from {csv_path}...")
     df = pd.read_csv(csv_path)
     
-    # 获取日期列（如果有）
+    # Get date column (if exists)
     info = StandardTimeSeriesDataset.DATASET_INFO.get(dataset_name, {})
     date_col = info.get('date_col', None)
     
-    # 移除日期列（如果存在）
+    # Remove date column (if exists)
     if date_col and date_col in df.columns:
         df = df.drop(columns=[date_col])
     
-    # 转换为numpy数组
+    # Convert to numpy array
     data = df.values.astype(np.float32)
     
     print(f"Dataset shape: {data.shape}")
     print(f"Features: {data.shape[1] if len(data.shape) > 1 else 1}")
     
-    # 划分数据集
+    # Split dataset
     n_samples = len(data)
     n_train = int(n_samples * train_ratio)
     n_val = int(n_samples * val_ratio)
@@ -251,7 +251,7 @@ def load_standard_dataset(
     print(f"  Val: {len(val_data)} samples")
     print(f"  Test: {len(test_data)} samples")
     
-    # 创建数据集（训练集用于计算归一化统计量）
+    # Create datasets (training set used to calculate normalization statistics)
     train_dataset = StandardTimeSeriesDataset(
         train_data,
         lookback=lookback,
@@ -260,7 +260,7 @@ def load_standard_dataset(
         scale=True
     )
     
-    # 验证集和测试集使用训练集的统计量
+    # Validation and test sets use training set statistics
     val_dataset = StandardTimeSeriesDataset(
         val_data,
         lookback=lookback,
@@ -281,7 +281,7 @@ def load_standard_dataset(
         train_std=train_dataset.std
     )
     
-    # 数据配置
+    # Data configuration
     data_config = {
         'dataset_name': dataset_name,
         'lookback': lookback,
@@ -345,14 +345,14 @@ def prepare_multiple_datasets(
         all_test_datasets.append(test_ds)
         all_configs.append(config)
     
-    # 合并所有数据集的序列
+    # Merge sequences from all datasets
     from torch.utils.data import ConcatDataset
     
     combined_train = ConcatDataset(all_train_datasets)
     combined_val = ConcatDataset(all_val_datasets)
     combined_test = ConcatDataset(all_test_datasets)
     
-    # 合并配置
+    # Merge configuration
     combined_config = {
         'datasets': dataset_names,
         'lookback': lookback,
@@ -363,7 +363,7 @@ def prepare_multiple_datasets(
         'individual_configs': all_configs
     }
     
-    # 保存配置
+    # Save configuration
     config_path = os.path.join(output_dir, "data_config.pkl")
     with open(config_path, "wb") as f:
         pickle.dump(combined_config, f)

@@ -1,6 +1,6 @@
 """
-UTSD数据集支持
-从HuggingFace下载和加载UTSD数据集
+UTSD dataset support
+Download and load UTSD dataset from HuggingFace
 """
 import os
 import numpy as np
@@ -16,19 +16,19 @@ def download_utsd_dataset(
     use_mirror=True
 ):
     """
-    下载UTSD数据集
+    Download UTSD dataset
     
     Args:
-        dataset_name: 数据集名称
-        subset: 子集名称（如'UTSD-1G', 'UTSD-2G', 'UTSD-4G', 'UTSD-12G'）
-        cache_dir: 缓存目录
-        use_mirror: 是否使用镜像
+        dataset_name: Dataset name
+        subset: Subset name (e.g., 'UTSD-1G', 'UTSD-2G', 'UTSD-4G', 'UTSD-12G')
+        cache_dir: Cache directory
+        use_mirror: Whether to use mirror
     
     Returns:
-        dataset: HuggingFace数据集对象
+        dataset: HuggingFace dataset object
     """
     if use_mirror:
-        # 设置镜像端点
+        # Set mirror endpoint
         os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
     
     print(f"Downloading UTSD dataset: {dataset_name}")
@@ -47,10 +47,10 @@ def download_utsd_dataset(
     except Exception as e:
         print(f"Error downloading dataset: {str(e)}")
         print("\nTrying to use mirror site...")
-        # 如果失败，尝试直接使用镜像
+        # If failed, try to use mirror directly
         if use_mirror:
             try:
-                # 直接使用镜像URL
+                # Use mirror URL directly
                 mirror_name = dataset_name.replace('thuml/', 'hf-mirror.com/thuml/')
                 if subset:
                     dataset = load_dataset(mirror_name, subset, cache_dir=cache_dir)
@@ -67,17 +67,17 @@ def download_utsd_dataset(
 
 class UTSDDataset(Dataset):
     """
-    UTSD数据集适配器
-    将HuggingFace格式的UTSD数据集转换为训练格式
+    UTSD dataset adapter
+    Convert HuggingFace format UTSD dataset to training format
     """
     
     def __init__(self, hf_dataset, lookback=512, pred_len=96, max_samples=None):
         """
         Args:
-            hf_dataset: HuggingFace数据集对象
-            lookback: 历史数据长度
-            pred_len: 预测长度
-            max_samples: 最大样本数（None表示使用所有）
+            hf_dataset: HuggingFace dataset object
+            lookback: Historical data length
+            pred_len: Prediction length
+            max_samples: Maximum number of samples (None means use all)
         """
         self.lookback = lookback
         self.pred_len = pred_len
@@ -86,40 +86,40 @@ class UTSDDataset(Dataset):
         print(f"Processing UTSD dataset...")
         print(f"Total samples: {len(hf_dataset)}")
         
-        # 处理数据
+        # Process data
         for idx, sample in enumerate(hf_dataset):
             if max_samples and idx >= max_samples:
                 break
             
-            # 获取时间序列数据
-            # UTSD数据集的字段名是'target'
+            # Get time series data
+            # UTSD dataset field name is 'target'
             target = sample.get('target', None)
             if target is None:
-                # 尝试其他可能的字段名
+                # Try other possible field names
                 target = sample.get('sequence', None)
                 if target is None:
                     continue
             
-            # 转换为numpy数组
+            # Convert to numpy array
             if isinstance(target, list):
                 ts_data = np.array(target, dtype=np.float32)
             elif isinstance(target, np.ndarray):
                 ts_data = target.astype(np.float32)
             else:
-                # 尝试直接转换
+                # Try direct conversion
                 try:
                     ts_data = np.array(target, dtype=np.float32)
                 except:
                     continue
             
-            # 检查数据长度
+            # Check data length
             min_length = lookback + pred_len
             if len(ts_data) < min_length:
                 continue
             
-            # 创建滑动窗口样本
-            # 对于UTSD，每个样本可能是一个完整的时间序列
-            # 我们使用滑动窗口创建多个训练样本
+            # Create sliding window samples
+            # For UTSD, each sample may be a complete time series
+            # We use sliding window to create multiple training samples
             stride = lookback + pred_len
             for i in range(0, len(ts_data) - min_length + 1, stride):
                 segment = ts_data[i:i + min_length]
@@ -134,9 +134,9 @@ class UTSDDataset(Dataset):
     
     def __getitem__(self, idx):
         seq = self.sequences[idx]
-        # 前 lookback 个点作为输入
+        # First lookback points as input
         history = seq[:self.lookback]
-        # 后 pred_len 个点作为目标
+        # Last pred_len points as target
         target = seq[self.lookback:self.lookback + self.pred_len]
         
         return torch.tensor(history, dtype=torch.float32), torch.tensor(target, dtype=torch.float32)
@@ -156,20 +156,20 @@ def prepare_utsd_for_training(
         output_dir="data/utsd"
 ):
     """
-    准备UTSD数据集用于训练
+    Prepare UTSD dataset for training
     
     Args:
-        dataset_name: 数据集名称
-        subset: 子集名称
-        lookback: 历史数据长度
-        pred_len: 预测长度
-        train_ratio: 训练集比例
-        val_ratio: 验证集比例
-        test_ratio: 测试集比例
-        max_samples: 最大样本数
-        cache_dir: 缓存目录
-        use_mirror: 是否使用镜像
-        output_dir: 输出目录
+        dataset_name: Dataset name
+        subset: Subset name
+        lookback: Historical data length
+        pred_len: Prediction length
+        train_ratio: Training set ratio
+        val_ratio: Validation set ratio
+        test_ratio: Test set ratio
+        max_samples: Maximum number of samples
+        cache_dir: Cache directory
+        use_mirror: Whether to use mirror
+        output_dir: Output directory
     
     Returns:
         train_dataset, val_dataset, test_dataset, data_config
@@ -178,7 +178,7 @@ def prepare_utsd_for_training(
     
     os.makedirs(output_dir, exist_ok=True)
     
-    # 下载数据集
+    # Download dataset
     dataset = download_utsd_dataset(
         dataset_name=dataset_name,
         subset=subset,
@@ -186,10 +186,10 @@ def prepare_utsd_for_training(
         use_mirror=use_mirror
     )
     
-    # 获取训练集
+    # Get training set
     train_hf = dataset['train']
     
-    # 创建UTSD数据集
+    # Create UTSD dataset
     utsd_dataset = UTSDDataset(
         train_hf,
         lookback=lookback,
@@ -197,7 +197,7 @@ def prepare_utsd_for_training(
         max_samples=max_samples
     )
     
-    # 划分数据集
+    # Split dataset
     n = len(utsd_dataset)
     n_train = int(n * train_ratio)
     n_val = int(n * val_ratio)
@@ -206,7 +206,7 @@ def prepare_utsd_for_training(
     val_indices = list(range(n_train, n_train + n_val))
     test_indices = list(range(n_train + n_val, n))
     
-    # 创建子集
+    # Create subsets
     from torch.utils.data import Subset
     train_dataset = Subset(utsd_dataset, train_indices)
     val_dataset = Subset(utsd_dataset, val_indices)
@@ -217,7 +217,7 @@ def prepare_utsd_for_training(
     print(f"  Val: {len(val_dataset)} samples")
     print(f"  Test: {len(test_dataset)} samples")
     
-    # 保存配置
+    # Save configuration
     data_config = {
         'lookback': lookback,
         'pred_len': pred_len,
