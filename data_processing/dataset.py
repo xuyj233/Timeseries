@@ -25,9 +25,9 @@ class TimeSeriesDataset(Dataset):
     
     def __getitem__(self, idx):
         seq = self.sequences[idx]
-        # 前 lookback 个点作为输入
+        # First lookback points as input
         history = seq[:self.lookback]
-        # 后 pred_len 个点作为目标
+        # Last pred_len points as target
         target = seq[self.lookback:self.lookback + self.pred_len]
         
         return torch.tensor(history, dtype=torch.float32), torch.tensor(target, dtype=torch.float32)

@@ -6,7 +6,7 @@ from transformers import PretrainedConfig
 
 
 class TimerConfig(PretrainedConfig):
-    """Timer模型配置类"""
+    """Timer model configuration class"""
     model_type = "timer"
     keys_to_ignore_at_inference = ["past_key_values"]
 
