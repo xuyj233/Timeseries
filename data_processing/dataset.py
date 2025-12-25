@@ -1,5 +1,5 @@
 """
-时间序列数据集
+Time series dataset
 """
 import torch
 from torch.utils.data import Dataset
@@ -7,14 +7,14 @@ import numpy as np
 
 
 class TimeSeriesDataset(Dataset):
-    """时间序列数据集类"""
+    """Time series dataset class"""
     
     def __init__(self, sequences, lookback, pred_len):
         """
         Args:
-            sequences: 时间序列数据列表，每个元素是一个数组
-            lookback: 历史数据长度
-            pred_len: 预测长度
+            sequences: List of time series data, each element is an array
+            lookback: Historical data length
+            pred_len: Prediction length
         """
         self.sequences = sequences
         self.lookback = lookback

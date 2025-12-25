@@ -1,5 +1,5 @@
 """
-Timer模型配置
+Timer model configuration
 """
 from typing import List
 from transformers import PretrainedConfig

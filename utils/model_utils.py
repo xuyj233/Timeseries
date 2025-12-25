@@ -1,12 +1,12 @@
 """
-模型工具函数
+Model utility functions
 """
 import os
 import torch
 import sys
 from pathlib import Path
 
-# 添加项目根目录到路径
+# Add project root to path
 if str(Path(__file__).parent.parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -50,13 +50,13 @@ def load_pretrained_model(model_path, device=None):
 
 def count_parameters(model):
     """
-    统计模型参数数量
+    Count model parameters
     
     Args:
-        model: 模型
+        model: Model
     
     Returns:
-        dict: 包含总参数数、可训练参数数等
+        dict: Dictionary containing total parameters, trainable parameters, etc.
     """
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

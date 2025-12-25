@@ -1,18 +1,18 @@
 """
-下载UTSD数据集脚本
-支持从镜像下载
+Script to download UTSD dataset
+Supports downloading from mirror
 """
 import os
 import argparse
 
-# 设置镜像
+# Set mirror
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
 import sys
 from pathlib import Path
 
-# 添加项目根目录到路径
+# Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from data import download_utsd_dataset
