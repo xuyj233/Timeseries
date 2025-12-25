@@ -263,6 +263,21 @@ Supports the following standard datasets (auto-download):
 - `--s3-train-samples`: Number of training samples (None means use all available samples)
 - `--s3-val-samples`: Number of validation samples
 
+### CSV File Parameters (Cryptocurrency Dataset)
+
+- `--csv-path`: Path to CSV file (required for `--data-source csv`)
+- `--csv-date-col`: Date column name to exclude (default: 'datetime')
+- `--csv-exclude-cols`: Additional columns to exclude (optional)
+- `--max-variates`: Maximum number of columns to process (optional, for limiting data size)
+
+**Cryptocurrency Dataset Example**:
+The `selected_factors.csv` file contains cryptocurrency factor data with:
+- `datetime`: Timestamp column (automatically excluded)
+- Multiple factor columns: Various technical indicators and features (e.g., alpha_volumeBS_2MA, alpha_opint_volume, caspar_hf_factor, etc.)
+- Each factor column is treated as an independent time series
+- The framework automatically normalizes and processes each column using S3 format
+- Suitable for pretraining on multi-factor cryptocurrency time series data
+
 ### Complete Parameter List
 
 ```bash
