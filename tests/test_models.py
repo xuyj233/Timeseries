@@ -80,7 +80,7 @@ class TestTimerModel:
         
         batch_size = 2
         seq_len = 192  # lookback + pred_len
-        input_ids = torch.randint(0, 1000, (batch_size, seq_len))
+        input_ids = torch.randn(batch_size, seq_len)  # Use float instead of int
         
         with torch.no_grad():
             outputs = model(input_ids=input_ids, return_dict=True)
@@ -102,7 +102,7 @@ class TestTimerModel:
         
         batch_size = 2
         seq_len = 192
-        input_ids = torch.randint(0, 1000, (batch_size, seq_len))
+        input_ids = torch.randn(batch_size, seq_len)  # Use float instead of int
         labels = input_ids.clone()
         
         outputs = model(input_ids=input_ids, labels=labels, return_dict=True)

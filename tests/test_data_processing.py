@@ -12,8 +12,7 @@ import os
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from data_processing.dataset import TimeSeriesDataset
-from data_processing.s3_preprocessor import S3Preprocessor, S3Dataset
+from data_processing import TimeSeriesDataset, S3Preprocessor, S3Dataset
 
 
 class TestTimeSeriesDataset:
