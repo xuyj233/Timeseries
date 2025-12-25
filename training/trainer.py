@@ -1,6 +1,6 @@
 """
-训练器类
-支持预训练和微调
+Training module
+Supports pretraining and fine-tuning with DeepSpeed acceleration
 """
 import os
 import json
@@ -17,11 +17,19 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import math
 
+# DeepSpeed support (optional)
+try:
+    import deepspeed
+    DEEPSPEED_AVAILABLE = True
+except ImportError:
+    DEEPSPEED_AVAILABLE = False
+    deepspeed = None
+
 
 class CosineAnnealingLRWithMin:
     """
-    带最小学习率的Cosine Annealing调度器
-    实现从base_lr到eta_min的cosine衰减
+    Cosine Annealing scheduler with minimum learning rate
+    Implements cosine decay from base_lr to eta_min
     """
     def __init__(self, optimizer, T_max, eta_min=0, base_lr=None, last_epoch=-1):
         self.optimizer = optimizer
@@ -32,7 +40,7 @@ class CosineAnnealingLRWithMin:
         self.step_count = 0
     
     def step(self):
-        """更新学习率"""
+        """Update learning rate"""
         self.step_count += 1
         if self.step_count <= self.T_max:
             # Cosine annealing: eta = eta_min + (base_lr - eta_min) * (1 + cos(π * step / T_max)) / 2
@@ -45,12 +53,12 @@ class CosineAnnealingLRWithMin:
             param_group['lr'] = lr
     
     def get_last_lr(self):
-        """获取当前学习率"""
+        """Get current learning rate"""
         return [param_group['lr'] for param_group in self.optimizer.param_groups]
 
 
 class Trainer:
-    """Timer模型训练器"""
+    """Timer model trainer with DeepSpeed support"""
     
     def __init__(
         self,
@@ -59,108 +67,140 @@ class Trainer:
         val_loader,
         config,
         device,
-        output_dir="outputs"
+        output_dir="outputs",
+        deepspeed_config=None
     ):
         """
         Args:
-            model: Timer模型
-            train_loader: 训练数据加载器
-            val_loader: 验证数据加载器
-            config: 训练配置
-            device: 设备
-            output_dir: 输出目录
+            model: Timer model
+            train_loader: Training data loader
+            val_loader: Validation data loader
+            config: Training configuration
+            device: Device
+            output_dir: Output directory
+            deepspeed_config: DeepSpeed configuration file path (optional)
         """
-        self.model = model.to(device)
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.config = config
         self.device = device
         self.output_dir = output_dir
+        self.use_deepspeed = deepspeed_config is not None and DEEPSPEED_AVAILABLE
         
         os.makedirs(output_dir, exist_ok=True)
         
-        # 优化器 - 使用AdamW（论文设置）
-        base_lr = config.get('learning_rate', 5e-5)  # 论文默认：5e-5
-        self.optimizer = optim.AdamW(
-            self.model.parameters(),
-            lr=base_lr,
-            weight_decay=config.get('weight_decay', 0.01)
-        )
+        # Optimizer - Use AdamW (paper settings)
+        base_lr = config.get('learning_rate', 5e-5)  # Paper default: 5e-5
         
-        # 学习率调度器 - 使用Cosine Annealing（论文设置）
+        # Learning rate scheduler - Use Cosine Annealing (paper settings)
         num_epochs = config.get('num_epochs', 10)
         num_training_steps = num_epochs * len(train_loader)
         
-        # 论文：decay steps proportional to 10 epochs
-        # 如果当前epochs不是10，按比例调整
+        # Paper: decay steps proportional to 10 epochs
+        # If current epochs is not 10, adjust proportionally
         base_epochs = 10
         if num_epochs != base_epochs:
-            # 按比例调整，但至少使用当前epochs
+            # Adjust proportionally, but at least use current epochs
             decay_steps = max(num_training_steps, int(num_training_steps * base_epochs / num_epochs))
         else:
             decay_steps = num_training_steps
         
-        # 最终学习率（论文：2e-6）
+        # Final learning rate (paper: 2e-6)
         min_lr = config.get('min_learning_rate', 2e-6)
         
-        # 选择调度器类型
+        # Select scheduler type
         scheduler_type = config.get('scheduler_type', 'cosine')  # 'cosine' or 'linear'
         
-        if scheduler_type == 'cosine':
-            # Cosine Annealing调度器
-            # 使用CosineAnnealingLR，但需要手动实现从base_lr到min_lr的衰减
-            # 创建一个自定义的cosine scheduler
-            self.scheduler = CosineAnnealingLRWithMin(
-                self.optimizer,
-                T_max=decay_steps,
-                eta_min=min_lr,
-                base_lr=base_lr
+        if self.use_deepspeed:
+            # Initialize DeepSpeed
+            print("[INFO] Initializing DeepSpeed...")
+            model_engine, optimizer, _, scheduler = deepspeed.initialize(
+                model=model,
+                optimizer=optim.AdamW(
+                    model.parameters(),
+                    lr=base_lr,
+                    weight_decay=config.get('weight_decay', 0.01)
+                ),
+                config=deepspeed_config
             )
+            self.model = model_engine
+            self.optimizer = optimizer
+            self.scheduler = scheduler
+            print("[OK] DeepSpeed initialized successfully!")
         else:
-            # Linear schedule with warmup（向后兼容）
-            num_warmup_steps = int(num_training_steps * config.get('warmup_ratio', 0.1))
-            self.scheduler = get_linear_schedule_with_warmup(
-                self.optimizer,
-                num_warmup_steps=num_warmup_steps,
-                num_training_steps=num_training_steps
+            # Standard PyTorch training
+            self.model = model.to(device)
+            self.optimizer = optim.AdamW(
+                self.model.parameters(),
+                lr=base_lr,
+                weight_decay=config.get('weight_decay', 0.01)
             )
+            
+            if scheduler_type == 'cosine':
+                # Cosine Annealing scheduler
+                self.scheduler = CosineAnnealingLRWithMin(
+                    self.optimizer,
+                    T_max=decay_steps,
+                    eta_min=min_lr,
+                    base_lr=base_lr
+                )
+            else:
+                # Linear schedule with warmup (backward compatibility)
+                num_warmup_steps = int(num_training_steps * config.get('warmup_ratio', 0.1))
+                self.scheduler = get_linear_schedule_with_warmup(
+                    self.optimizer,
+                    num_warmup_steps=num_warmup_steps,
+                    num_training_steps=num_training_steps
+                )
         
-        # 训练历史
+        # Training history
         self.train_losses = []
         self.val_losses = []
         self.val_metrics_history = []
         self.best_val_loss = float('inf')
     
     def train_epoch(self, epoch):
-        """训练一个epoch"""
+        """Train one epoch"""
         self.model.train()
         epoch_train_loss = 0
         
         pbar = tqdm(self.train_loader, desc=f"Epoch {epoch+1}/{self.config.get('num_epochs', 10)} [Train]")
         
         for history, target in pbar:
-            history = history.to(self.device)
-            target = target.to(self.device)
+            if not self.use_deepspeed:
+                history = history.to(self.device)
+                target = target.to(self.device)
             
-            # 拼接输入和目标用于teacher forcing
-            # 对于预训练，我们使用完整的序列
+            # Concatenate input and target for teacher forcing
+            # For pretraining, we use the full sequence
             full_sequence = torch.cat([history, target], dim=1)
             
-            # 前向传播
-            outputs = self.model(
-                input_ids=full_sequence,
-                labels=full_sequence,  # 自回归预测
-                return_dict=True
-            )
-            
-            loss = outputs.loss
-            
-            # 反向传播
-            self.optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-            self.optimizer.step()
-            self.scheduler.step()
+            if self.use_deepspeed:
+                # DeepSpeed forward pass
+                outputs = self.model(
+                    input_ids=full_sequence,
+                    labels=full_sequence,  # Autoregressive prediction
+                    return_dict=True
+                )
+                loss = outputs.loss
+                # DeepSpeed backward and step
+                self.model.backward(loss)
+                self.model.step()
+            else:
+                # Standard PyTorch forward pass
+                outputs = self.model(
+                    input_ids=full_sequence,
+                    labels=full_sequence,  # Autoregressive prediction
+                    return_dict=True
+                )
+                loss = outputs.loss
+                
+                # Standard backward pass
+                self.optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                self.optimizer.step()
+                self.scheduler.step()
             
             epoch_train_loss += loss.item()
             pbar.set_postfix({'loss': f'{loss.item():.6f}'})
@@ -168,7 +208,7 @@ class Trainer:
         return epoch_train_loss / len(self.train_loader)
     
     def validate(self):
-        """验证"""
+        """Validation"""
         self.model.eval()
         total_loss = 0
         all_predictions = []
@@ -176,21 +216,30 @@ class Trainer:
         
         with torch.no_grad():
             for history, target in tqdm(self.val_loader, desc="Validating"):
-                history = history.to(self.device)
-                target = target.to(self.device)
+                if not self.use_deepspeed:
+                    history = history.to(self.device)
+                    target = target.to(self.device)
                 
-                # 使用历史数据生成预测
+                # Generate predictions using historical data
                 full_sequence = torch.cat([history, target], dim=1)
-                outputs = self.model(
-                    input_ids=full_sequence,
-                    labels=full_sequence,
-                    return_dict=True
-                )
+                
+                if self.use_deepspeed:
+                    outputs = self.model.module(
+                        input_ids=full_sequence,
+                        labels=full_sequence,
+                        return_dict=True
+                    )
+                else:
+                    outputs = self.model(
+                        input_ids=full_sequence,
+                        labels=full_sequence,
+                        return_dict=True
+                    )
                 
                 loss = outputs.loss
                 total_loss += loss.item()
                 
-                # 获取预测（使用最后一个时间步的预测）
+                # Get predictions (use last time step prediction)
                 predictions = outputs.logits
                 if predictions is not None:
                     # 提取预测部分
@@ -204,12 +253,12 @@ class Trainer:
         
         avg_loss = total_loss / len(self.val_loader)
         
-        # 计算指标
+        # Calculate metrics
         if all_predictions:
             all_predictions = np.concatenate(all_predictions, axis=0)
             all_targets = np.concatenate(all_targets, axis=0)
             
-            # 确保形状匹配
+            # Ensure shape matching
             if all_predictions.shape != all_targets.shape:
                 min_len = min(all_predictions.shape[1], all_targets.shape[1])
                 all_predictions = all_predictions[:, :min_len]
@@ -219,7 +268,7 @@ class Trainer:
             rmse = np.sqrt(mse)
             mae = np.mean(np.abs(all_targets - all_predictions))
             
-            # 方向准确率
+            # Direction accuracy
             first_step_pred = all_predictions[:, 0] if all_predictions.shape[1] > 0 else all_predictions.flatten()
             first_step_true = all_targets[:, 0] if all_targets.shape[1] > 0 else all_targets.flatten()
             direction_acc = np.mean(np.sign(first_step_pred) == np.sign(first_step_true))
@@ -237,13 +286,14 @@ class Trainer:
         return metrics
     
     def train(self):
-        """完整训练流程"""
+        """Complete training workflow"""
         num_epochs = self.config.get('num_epochs', 10)
         
         print(f"\n{'='*60}")
         print("Starting Training")
         print(f"{'='*60}")
         print(f"Device: {self.device}")
+        print(f"DeepSpeed: {'Enabled' if self.use_deepspeed else 'Disabled'}")
         print(f"Epochs: {num_epochs}")
         print(f"Batch size: {self.config.get('batch_size', 4)}")
         print(f"Learning rate: {self.config.get('learning_rate', 1e-4)}")
@@ -254,11 +304,11 @@ class Trainer:
         best_model_path = os.path.join(self.output_dir, "best_model")
         
         for epoch in range(num_epochs):
-            # 训练
+            # Training
             train_loss = self.train_epoch(epoch)
             self.train_losses.append(train_loss)
             
-            # 验证
+            # Validation
             val_metrics = self.validate()
             self.val_losses.append(val_metrics['loss'])
             self.val_metrics_history.append(val_metrics)
@@ -270,26 +320,38 @@ class Trainer:
             print(f"  Val MAE: {val_metrics['mae']:.6f}")
             print(f"  Val Direction Acc: {val_metrics['direction_accuracy']:.2%}")
             
-            # 保存最佳模型
+            # Save best model
             if val_metrics['loss'] < self.best_val_loss:
                 self.best_val_loss = val_metrics['loss']
                 print(f"  [OK] New best model! Saving...")
                 os.makedirs(best_model_path, exist_ok=True)
-                # 保存模型状态和配置
-                torch.save(self.model.state_dict(), os.path.join(best_model_path, "model.pt"))
-                self.model.config.save_pretrained(best_model_path)
-                torch.save(self.optimizer.state_dict(), os.path.join(best_model_path, "optimizer.pt"))
+                # Save model state and configuration
+                if self.use_deepspeed:
+                    # DeepSpeed model saving
+                    self.model.save_checkpoint(best_model_path)
+                    # Also save config separately
+                    model_to_save = self.model.module if hasattr(self.model, 'module') else self.model
+                    model_to_save.config.save_pretrained(best_model_path)
+                else:
+                    torch.save(self.model.state_dict(), os.path.join(best_model_path, "model.pt"))
+                    self.model.config.save_pretrained(best_model_path)
+                    torch.save(self.optimizer.state_dict(), os.path.join(best_model_path, "optimizer.pt"))
             
-            # 保存训练历史
+            # Save training history
             self.save_history()
         
-        # 保存最终模型
+        # Save final model
         final_model_path = os.path.join(self.output_dir, "final_model")
         os.makedirs(final_model_path, exist_ok=True)
-        torch.save(self.model.state_dict(), os.path.join(final_model_path, "model.pt"))
-        self.model.config.save_pretrained(final_model_path)
+        if self.use_deepspeed:
+            self.model.save_checkpoint(final_model_path)
+            model_to_save = self.model.module if hasattr(self.model, 'module') else self.model
+            model_to_save.config.save_pretrained(final_model_path)
+        else:
+            torch.save(self.model.state_dict(), os.path.join(final_model_path, "model.pt"))
+            self.model.config.save_pretrained(final_model_path)
         
-        # 绘制训练曲线
+        # Plot training curves
         self.plot_training_curves()
         
         print(f"\n{'='*60}")
@@ -300,7 +362,7 @@ class Trainer:
         print(f"{'='*60}\n")
     
     def save_history(self):
-        """保存训练历史"""
+        """Save training history"""
         history_data = {
             'train_losses': self.train_losses,
             'val_losses': self.val_losses,
@@ -310,7 +372,7 @@ class Trainer:
             json.dump(history_data, f, indent=2)
     
     def plot_training_curves(self):
-        """绘制训练曲线"""
+        """Plot training curves"""
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
         epochs = range(1, len(self.train_losses) + 1)
         

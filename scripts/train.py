@@ -164,6 +164,8 @@ def main():
     parser.add_argument("--scheduler-type", type=str, default="cosine", choices=["cosine", "linear"],
                        help="Learning rate scheduler type: cosine (paper) or linear")
     parser.add_argument("--device", type=str, default=None, help="Device (cuda/cpu)")
+    parser.add_argument("--deepspeed-config", type=str, default=None,
+                       help="Path to DeepSpeed configuration file (optional, enables DeepSpeed training)")
     
     # 模型结构配置（可选，覆盖model-structure）
     parser.add_argument("--input-token-len", type=int, default=None, help="Input token length")
@@ -490,7 +492,9 @@ def main():
         'pred_len': pred_len,
     }
     
-    # 选择训练器
+    # Select trainer
+    deepspeed_config = args.deepspeed_config if args.deepspeed_config and os.path.exists(args.deepspeed_config) else None
+    
     if args.mode == 'pretrain':
         trainer = Trainer(
             model=model,
@@ -498,7 +502,8 @@ def main():
             val_loader=val_loader,
             config=train_config,
             device=device,
-            output_dir=args.output_dir
+            output_dir=args.output_dir,
+            deepspeed_config=deepspeed_config
         )
     else:
         trainer = FineTuneTrainer(
@@ -507,10 +512,11 @@ def main():
             val_loader=val_loader,
             config=train_config,
             device=device,
-            output_dir=args.output_dir
+            output_dir=args.output_dir,
+            deepspeed_config=deepspeed_config
         )
     
-    # 开始训练
+    # Start training
     trainer.train()
 
 

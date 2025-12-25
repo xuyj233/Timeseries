@@ -33,6 +33,7 @@ A complete Timer model training framework supporting both pretraining and fine-t
 - **Multiple Model Structures**: Supports tiny/small/base/large model structures
 - **Multiple Data Sources**: Supports UTSD, standard datasets, CSV files, and local data
 - **Cryptocurrency Dataset Support**: Direct pretraining on CSV files with multiple factor columns
+- **DeepSpeed Acceleration**: Optional DeepSpeed support for faster training and larger models
 - **Mirror Support**: Automatically downloads models and datasets from hf-mirror.com
 - **Flexible Configuration**: Supports command-line arguments and configuration files
 - **Modular Design**: Clear code structure, easy to maintain and extend
@@ -392,6 +393,9 @@ python scripts/train.py --help
 - `--use-cache`: Use cached data (default: True)
 - `--no-cache`: Force reprocessing
 
+**DeepSpeed**:
+- `--deepspeed-config`: Path to DeepSpeed configuration file (enables DeepSpeed training)
+
 ---
 
 ## 🔧 Project Structure
@@ -522,6 +526,65 @@ python scripts/train.py \
 
 ## 🔬 Advanced Usage
 
+### DeepSpeed Training Acceleration
+
+DeepSpeed provides significant speedup and memory optimization for large-scale training.
+
+**Benefits**:
+- **Faster Training**: Optimized communication and computation
+- **Memory Efficiency**: ZeRO optimizer states partitioning
+- **Larger Models**: Train models that don't fit in single GPU memory
+- **Mixed Precision**: Automatic FP16 support
+
+**Prerequisites**:
+```bash
+pip install deepspeed
+```
+
+**Usage**:
+```bash
+# Use DeepSpeed with ZeRO Stage 2 (recommended for most cases)
+python scripts/train.py \
+    --mode pretrain \
+    --data-source csv \
+    --csv-path data/selected_factors.csv \
+    --deepspeed-config deepspeed_config.json \
+    --model-structure base \
+    --batch-size 8 \
+    --num-epochs 10
+
+# Use DeepSpeed with ZeRO Stage 3 (for very large models)
+python scripts/train.py \
+    --mode pretrain \
+    --data-source csv \
+    --csv-path data/selected_factors.csv \
+    --deepspeed-config deepspeed_config_zero3.json \
+    --model-structure large \
+    --batch-size 4
+```
+
+**DeepSpeed Configuration Files**:
+- `deepspeed_config.json`: ZeRO Stage 2 (recommended for most cases)
+  - Optimizer state partitioning
+  - Gradient partitioning
+  - FP16 mixed precision
+- `deepspeed_config_zero3.json`: ZeRO Stage 3 (for very large models)
+  - Parameter, optimizer, and gradient partitioning
+  - CPU offloading support
+  - Maximum memory efficiency
+
+**Multi-GPU Training**:
+```bash
+# DeepSpeed automatically handles multi-GPU training
+deepspeed --num_gpus=4 scripts/train.py \
+    --mode pretrain \
+    --data-source csv \
+    --csv-path data/selected_factors.csv \
+    --deepspeed-config deepspeed_config.json
+```
+
+**Note**: When using DeepSpeed, batch size and learning rate are automatically adjusted per GPU. The configuration files use "auto" values that adapt to your settings.
+
 ### Custom Model Architecture
 
 ```bash
@@ -547,7 +610,7 @@ For large batch size simulation:
 
 ### Mixed Precision Training
 
-The framework automatically uses mixed precision if available (PyTorch 1.6+).
+The framework automatically uses mixed precision if available (PyTorch 1.6+). DeepSpeed also provides automatic FP16 support.
 
 ### Resume Training
 
