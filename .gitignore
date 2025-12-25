@@ -101,7 +101,6 @@ huggingface/
 *.bak
 
 # ============================================================================
-# 保留重要的配置和结果文件
+# Test outputs (exclude from Git)
 # ============================================================================
-!test_pretrain/training_history.json
-!test_pretrain/training_curves.png
+test_pretrain/

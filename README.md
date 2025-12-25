@@ -1,74 +1,74 @@
-# TIMER 统一训练框架
+# TIMER Unified Training Framework
 
-支持预训练和微调的完整Timer模型训练框架，支持多种模型结构和数据集。
+A complete Timer model training framework supporting both pretraining and fine-tuning, with support for multiple model structures and datasets.
 
-## ✨ 特性
+## ✨ Features
 
-- **统一训练入口**: 一个脚本支持预训练和微调
-- **多种模型结构**: 支持tiny/small/base/large模型结构
-- **多种数据源**: 支持本地数据和UTSD数据集
-- **镜像支持**: 自动从hf-mirror.com下载模型和数据集
-- **灵活配置**: 支持命令行参数和配置文件
-- **模块化设计**: 清晰的代码结构，易于维护和扩展
+- **Unified Training Entry**: One script supports both pretraining and fine-tuning
+- **Multiple Model Structures**: Supports tiny/small/base/large model structures
+- **Multiple Data Sources**: Supports local data and UTSD dataset
+- **Mirror Support**: Automatically downloads models and datasets from hf-mirror.com
+- **Flexible Configuration**: Supports command-line arguments and configuration files
+- **Modular Design**: Clear code structure, easy to maintain and extend
 
-## 📋 快速开始
+## 📋 Quick Start
 
-### 1. 安装依赖
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 一键运行（预训练 + 评测）
+### 2. One-Click Run (Pretraining + Evaluation)
 
-使用提供的脚本一键完成预训练和评测：
+Use the provided scripts to complete pretraining and evaluation in one go:
 
 **Linux/Mac (Bash):**
 ```bash
-# 完整流程：预训练 + 评测
+# Complete workflow: pretraining + evaluation
 bash scripts/run_pretrain_and_eval.sh
 
-# 只运行预训练
+# Only run pretraining
 bash scripts/run_pretrain_and_eval.sh --skip-eval
 
-# 只运行评测（需要已有预训练模型）
+# Only run evaluation (requires existing pretrained model)
 bash scripts/run_pretrain_and_eval.sh --skip-pretrain
 
-# 查看帮助
+# Show help
 bash scripts/run_pretrain_and_eval.sh --help
 ```
 
-**Windows (批处理):**
+**Windows (Batch):**
 ```cmd
-REM 完整流程：预训练 + 评测
+REM Complete workflow: pretraining + evaluation
 scripts\run_pretrain_and_eval.bat
 
-REM 只运行预训练
+REM Only run pretraining
 scripts\run_pretrain_and_eval.bat --skip-eval
 
-REM 只运行评测（需要已有预训练模型）
+REM Only run evaluation (requires existing pretrained model)
 scripts\run_pretrain_and_eval.bat --skip-pretrain
 
-REM 查看帮助
+REM Show help
 scripts\run_pretrain_and_eval.bat --help
 ```
 
-脚本会自动：
-- ✅ 检查Python环境和依赖
-- ✅ 检查CUDA是否可用
-- ✅ 创建必要的目录结构
-- ✅ 下载UTSD数据集（S3格式）
-- ✅ 进行预训练（使用论文推荐的超参数）
-- ✅ 在ETTH1, ECL, TRAFFIC, WEATHER, PEMS03, PEMS04上评测
-- ✅ 保存结果到 `outputs/` 目录
-- ✅ 显示评测结果摘要
+The scripts will automatically:
+- ✅ Check Python environment and dependencies
+- ✅ Check if CUDA is available
+- ✅ Create necessary directory structure
+- ✅ Download UTSD dataset (S3 format)
+- ✅ Perform pretraining (using paper-recommended hyperparameters)
+- ✅ Evaluate on ETTH1, ECL, TRAFFIC, WEATHER, PEMS03, PEMS04
+- ✅ Save results to `outputs/` directory
+- ✅ Display evaluation results summary
 
-### 2. 开始训练
+### 3. Start Training
 
-#### 使用UTSD数据集预训练（推荐使用S3格式）
+#### Pretraining with UTSD Dataset (Recommended: S3 Format)
 
 ```bash
-# 使用S3格式预处理（推荐，符合论文方法）
+# Use S3 format preprocessing (recommended, follows paper methodology)
 python scripts/train.py \
     --mode pretrain \
     --data-source utsd-s3 \
@@ -79,7 +79,7 @@ python scripts/train.py \
     --num-epochs 20 \
     --output-dir pretrain_outputs
 
-# 或使用原始UTSD格式
+# Or use original UTSD format
 python scripts/train.py \
     --mode pretrain \
     --data-source utsd \
@@ -90,10 +90,10 @@ python scripts/train.py \
     --output-dir pretrain_outputs
 ```
 
-#### 使用标准数据集微调（ETTH1, ECL, TRAFFIC等）
+#### Fine-tuning with Standard Datasets (ETTH1, ECL, TRAFFIC, etc.)
 
 ```bash
-# 单个数据集
+# Single dataset
 python scripts/train.py \
     --mode finetune \
     --data-source standard \
@@ -104,7 +104,7 @@ python scripts/train.py \
     --num-epochs 10 \
     --output-dir finetune_etth1
 
-# 多个数据集
+# Multiple datasets
 python scripts/train.py \
     --mode finetune \
     --data-source standard \
@@ -116,13 +116,13 @@ python scripts/train.py \
     --output-dir finetune_multiple
 ```
 
-#### 使用本地数据微调
+#### Fine-tuning with Local Data
 
 ```bash
-# 1. 准备数据
+# 1. Prepare data
 python scripts/prepare_data.py --csv-path <your_data.csv> --output-dir data
 
-# 2. 开始微调
+# 2. Start fine-tuning
 python scripts/train.py \
     --mode finetune \
     --data-source local \
@@ -132,155 +132,172 @@ python scripts/train.py \
     --output-dir finetune_outputs
 ```
 
-## 📖 详细使用说明
+#### Pretraining with CSV File
 
-### 训练模式
+```bash
+# Pretrain on CSV file (e.g., selected_factors.csv)
+python scripts/train.py \
+    --mode pretrain \
+    --data-source csv \
+    --csv-path data/selected_factors.csv \
+    --model-structure base \
+    --context-length 512 \
+    --batch-size 4 \
+    --num-epochs 10 \
+    --output-dir pretrain_csv_outputs
+```
 
-- `--mode pretrain`: 从头预训练
-- `--mode finetune`: 微调（从预训练模型或HuggingFace模型）
+## 📖 Detailed Usage
 
-### 数据源
+### Training Modes
 
-- `--data-source local`: 使用本地数据（通过prepare_data.py准备）
-- `--data-source utsd`: 使用UTSD数据集（原始格式，自动下载）
-- `--data-source utsd-s3`: 使用UTSD数据集（S3格式，推荐用于预训练）
-- `--data-source standard`: 使用标准时间序列数据集（ETTH1, ECL, TRAFFIC, WEATHER, PEMS03, PEMS04等）
+- `--mode pretrain`: Pretrain from scratch
+- `--mode finetune`: Fine-tune (from pretrained model or HuggingFace model)
 
-**S3格式说明**：
-S3（Single-Series Sequence）格式是论文中提出的预处理方法，适用于预训练：
-- 每个变量序列按9:1分割，使用训练集统计量归一化
-- 归一化后的序列合并成单变量序列池
-- 从池中均匀采样固定长度的窗口序列
-- 不需要时间对齐，适用于广泛的单变量和不规则时间序列
+### Data Sources
 
-**本地缓存功能**：
-- 处理后的数据会自动保存到 `data_cache/` 目录
-- 第二次运行时会自动使用缓存，无需重新下载和处理
-- 使用 `--no-cache` 强制重新处理数据
-- 缓存文件包括：
-  - `train_sequences.pkl`: 训练序列
-  - `val_sequences.pkl`: 验证序列
-  - `data_config.pkl`: 数据配置
+- `--data-source local`: Use local data (prepared via prepare_data.py)
+- `--data-source utsd`: Use UTSD dataset (original format, auto-download)
+- `--data-source utsd-s3`: Use UTSD dataset (S3 format, recommended for pretraining)
+- `--data-source standard`: Use standard time series datasets (ETTH1, ECL, TRAFFIC, WEATHER, PEMS03, PEMS04, etc.)
+- `--data-source csv`: Use CSV file for pretraining
 
-### 模型结构
+**S3 Format Description**:
+S3 (Single-Series Sequence) format is a preprocessing method proposed in the paper, suitable for pretraining:
+- Each variable sequence is split 9:1, normalized using training set statistics
+- Normalized sequences are merged into a single-variate sequence pool
+- Fixed-length window sequences are uniformly sampled from the pool
+- No time alignment required, suitable for a wide range of univariate and irregular time series
 
-- `--model-structure tiny`: 小模型（256 hidden, 4 layers）
-- `--model-structure small`: 中小模型（512 hidden, 6 layers）
-- `--model-structure base`: 基础模型（1024 hidden, 8 layers）
-- `--model-structure large`: 大模型（2048 hidden, 12 layers）
+**Local Cache Functionality**:
+- Processed data is automatically saved to `data/` directory
+- Second run will automatically use cache, no need to re-download and process
+- Use `--no-cache` to force reprocessing
+- Cache files include:
+  - `train_sequences.pkl`: Training sequences
+  - `val_sequences.pkl`: Validation sequences
+  - `data_config.pkl`: Data configuration
 
-也可以使用自定义参数覆盖：
+### Model Structures
+
+- `--model-structure tiny`: Small model (256 hidden, 4 layers)
+- `--model-structure small`: Medium-small model (512 hidden, 6 layers)
+- `--model-structure base`: Base model (1024 hidden, 8 layers)
+- `--model-structure large`: Large model (2048 hidden, 12 layers)
+
+You can also override with custom parameters:
 ```bash
 --hidden-size 512 --num-layers 6 --num-heads 8
 ```
 
-### 训练超参数（论文设置）
+### Training Hyperparameters (Paper Settings)
 
-- **优化器**: AdamW（默认）
-- **学习率调度**: Cosine Annealing（默认）
-  - 基础学习率: `5e-5`（论文默认）
-  - 最终学习率: `2e-6`（论文默认）
-  - 衰减步数: 与10个epoch的训练步数成比例
-- **Batch Size**: 论文中使用8192（根据GPU内存调整）
-- **预训练Token数**: N=15（可通过`--input-token-len`设置）
+- **Optimizer**: AdamW (default)
+- **Learning Rate Schedule**: Cosine Annealing (default)
+  - Base learning rate: `5e-5` (paper default)
+  - Final learning rate: `2e-6` (paper default)
+  - Decay steps: Proportional to training steps for 10 epochs
+- **Batch Size**: Paper uses 8192 (adjust based on GPU memory)
+- **Pretraining Token Count**: N=15 (can be set via `--input-token-len`)
 
-### 标准时间序列数据集
+### Standard Time Series Datasets
 
-支持以下标准数据集（自动下载）：
-- `ETTH1`, `ETTH2`: 电力变压器温度数据
-- `ETTM1`, `ETTM2`: 电力变压器温度数据（分钟级）
-- `ECL`: 电力消耗数据
-- `TRAFFIC`: 交通流量数据
-- `WEATHER`: 天气数据
-- `PEMS03`, `PEMS04`, `PEMS07`, `PEMS08`: 交通传感器数据
+Supports the following standard datasets (auto-download):
+- `ETTH1`, `ETTH2`: Electric transformer temperature data
+- `ETTM1`, `ETTM2`: Electric transformer temperature data (minute-level)
+- `ECL`: Electricity consumption data
+- `TRAFFIC`: Traffic flow data
+- `WEATHER`: Weather data
+- `PEMS03`, `PEMS04`, `PEMS07`, `PEMS08`: Traffic sensor data
 
-**默认设置**：
+**Default Settings**:
 - Lookback length: 672
 - Prediction length: 96
 
-**使用示例**：
+**Usage Examples**:
 ```bash
-# 单个数据集
+# Single dataset
 --data-source standard --standard-dataset ETTH1
 
-# 多个数据集
+# Multiple datasets
 --data-source standard --standard-datasets ETTH1 ECL TRAFFIC WEATHER PEMS03 PEMS04
 ```
 
-### UTSD数据集子集
+### UTSD Dataset Subsets
 
-- `UTSD-1G`: 1GB数据子集（约68.7k样本）
-- `UTSD-2G`: 2GB数据子集（约75.4k样本）
-- `UTSD-4G`: 4GB数据子集
-- `UTSD-12G`: 12GB数据子集
-- 不指定: 使用完整数据集（约434k样本）
+- `UTSD-1G`: 1GB data subset (~68.7k samples)
+- `UTSD-2G`: 2GB data subset (~75.4k samples)
+- `UTSD-4G`: 4GB data subset
+- `UTSD-12G`: 12GB data subset
+- Not specified: Use full dataset (~434k samples)
 
-### S3格式参数
+### S3 Format Parameters
 
-- `--context-length`: S3格式的上下文长度（默认512）
-- `--s3-train-samples`: 训练样本数量（None表示使用所有可用样本）
-- `--s3-val-samples`: 验证样本数量
+- `--context-length`: Context length for S3 format (default 512)
+- `--s3-train-samples`: Number of training samples (None means use all available samples)
+- `--s3-val-samples`: Number of validation samples
 
-### 完整参数列表
+### Complete Parameter List
 
 ```bash
 python scripts/train.py --help
 ```
 
-## 🔧 项目结构
+## 🔧 Project Structure
 
 ```
 timer_finetune/
-├── models/              # 模型模块
+├── models/              # Model modules
 │   ├── __init__.py
-│   ├── timer_config.py  # Timer模型配置
-│   └── timer_model.py   # Timer模型实现
+│   ├── timer_config.py  # Timer model configuration
+│   └── timer_model.py   # Timer model implementation
 │
-├── data_processing/     # 数据处理模块（代码）
+├── data_processing/     # Data processing modules (code)
 │   ├── __init__.py
-│   ├── dataset.py       # 时间序列数据集类
-│   ├── data_loader.py   # 数据加载器
-│   ├── utsd_dataset.py  # UTSD数据集支持
-│   ├── s3_preprocessor.py  # S3格式预处理
-│   └── standard_datasets.py  # 标准数据集支持
+│   ├── dataset.py       # Time series dataset classes
+│   ├── data_loader.py   # Data loaders
+│   ├── utsd_dataset.py  # UTSD dataset support
+│   ├── s3_preprocessor.py  # S3 format preprocessing
+│   └── standard_datasets.py  # Standard dataset support
 │
-├── data_cache/          # 数据缓存目录（实际数据文件）
-│   ├── utsd/            # UTSD数据集缓存
-│   ├── s3/              # S3格式数据
-│   └── standard_datasets/  # 标准数据集
+├── data/                # Data directory (actual data files)
+│   ├── utsd/            # UTSD dataset cache
+│   ├── s3/              # S3 format data
+│   └── standard_datasets/  # Standard datasets
 │
-├── training/            # 训练模块
+├── training/            # Training modules
 │   ├── __init__.py
-│   ├── trainer.py       # 预训练训练器
-│   └── finetune_trainer.py  # 微调训练器
+│   ├── trainer.py       # Pretraining trainer
+│   └── finetune_trainer.py  # Fine-tuning trainer
 │
-├── utils/               # 工具函数模块
+├── utils/               # Utility function modules
 │   ├── __init__.py
-│   └── model_utils.py   # 模型工具函数
+│   └── model_utils.py   # Model utility functions
 │
-├── scripts/             # 脚本模块
+├── scripts/             # Script modules
 │   ├── __init__.py
-│   ├── train.py         # 统一训练入口
-│   ├── evaluate.py      # 模型评测脚本
-│   ├── run_pretrain_and_eval.sh  # 一键运行脚本（Linux/Mac）
-│   ├── run_pretrain_and_eval.bat # 一键运行脚本（Windows）
-│   └── prepare_data.py  # 数据准备脚本
+│   ├── train.py         # Unified training entry
+│   ├── evaluate.py      # Model evaluation script
+│   ├── run_pretrain_and_eval.sh  # One-click run script (Linux/Mac)
+│   ├── run_pretrain_and_eval.bat # One-click run script (Windows)
+│   ├── pretrain_csv.bat # CSV pretraining script
+│   └── prepare_data.py  # Data preparation script
 │
-├── outputs/             # 输出目录（模型和结果）
+├── outputs/             # Output directory (models and results)
 │
-├── README.md            # 本文档
-├── requirements.txt     # 依赖
-└── LICENSE              # 许可证
+├── README.md            # This document
+├── requirements.txt     # Dependencies
+└── LICENSE              # License
 ```
 
-**注意**：
-- `data_processing/` 文件夹包含数据处理相关的**代码模块**（避免与HuggingFace的datasets库冲突）
-- `data_cache/` 文件夹存储**实际的数据文件**（下载的数据集、预处理后的数据等）
-- `outputs/` 文件夹存储训练输出（模型权重、训练历史、评测结果等）
+**Note**:
+- `data_processing/` folder contains data processing related **code modules** (to avoid conflicts with HuggingFace's datasets library)
+- `data/` folder stores **actual data files** (downloaded datasets, preprocessed data, etc.)
+- `outputs/` folder stores training outputs (model weights, training history, evaluation results, etc.)
 
-## 🚀 使用示例
+## 🚀 Usage Examples
 
-### 预训练小模型（使用S3格式，论文超参数）
+### Pretrain Small Model (S3 Format, Paper Hyperparameters)
 
 ```bash
 python scripts/train.py \
@@ -297,9 +314,9 @@ python scripts/train.py \
     --output-dir pretrain_small
 ```
 
-**注意**: 论文中使用batch size=8192，但需要根据GPU内存调整。可以使用梯度累积来模拟大batch size。
+**Note**: The paper uses batch size=8192, but adjust based on GPU memory. You can use gradient accumulation to simulate large batch size.
 
-### 微调大模型
+### Fine-tune Large Model
 
 ```bash
 python scripts/train.py \
@@ -314,88 +331,88 @@ python scripts/train.py \
     --output-dir finetune_large
 ```
 
-### 下载UTSD数据集
+### Download UTSD Dataset
 
 ```bash
 python scripts/download_utsd.py --subset UTSD-1G
 ```
 
-## 📊 输出文件
+## 📊 Output Files
 
-训练完成后，输出目录包含：
+After training completes, the output directory contains:
 
-- `best_model/`: 验证集上表现最好的模型
-  - `model.pt`: 模型权重
-  - `config.json`: 模型配置
-  - `optimizer.pt`: 优化器状态
-- `final_model/`: 最后一轮的模型
-- `training_history.json`: 训练历史数据
-- `training_curves.png`: 训练曲线图
+- `best_model/`: Best model on validation set
+  - `model.pt`: Model weights
+  - `config.json`: Model configuration
+  - `optimizer.pt`: Optimizer state
+- `final_model/`: Model from last epoch
+- `training_history.json`: Training history data
+- `training_curves.png`: Training curves plot
 
-## 🔄 工作流程
+## 🔄 Workflow
 
-### 完整预训练流程
+### Complete Pretraining Workflow
 
-1. **下载UTSD数据集**（可选）
+1. **Download UTSD Dataset** (optional)
    ```bash
    python scripts/download_utsd.py --subset UTSD-1G
    ```
 
-2. **开始预训练**
+2. **Start Pretraining**
    ```bash
    python scripts/train.py --mode pretrain --data-source utsd --utsd-subset UTSD-1G
    ```
 
-3. **使用预训练模型进行微调**
+3. **Fine-tune with Pretrained Model**
    ```bash
    python scripts/train.py --mode finetune --pretrained-model pretrain_outputs/best_model
    ```
 
-### 微调流程
+### Fine-tuning Workflow
 
-1. **准备本地数据**
+1. **Prepare Local Data**
    ```bash
    python scripts/prepare_data.py --csv-path <path> --output-dir data
    ```
 
-2. **从HuggingFace模型微调**
+2. **Fine-tune from HuggingFace Model**
    ```bash
    python scripts/train.py --mode finetune --data-source local --data-dir data
    ```
 
-## 🌐 镜像支持
+## 🌐 Mirror Support
 
-框架自动使用hf-mirror.com镜像，无需额外配置。如果需要切换：
+The framework automatically uses hf-mirror.com mirror, no additional configuration needed. To switch:
 
 ```bash
-export HF_ENDPOINT=https://hf-mirror.com  # 使用镜像
-export HF_ENDPOINT=https://huggingface.co  # 使用官方
+export HF_ENDPOINT=https://hf-mirror.com  # Use mirror
+export HF_ENDPOINT=https://huggingface.co  # Use official
 ```
 
-## 📝 注意事项
+## 📝 Notes
 
-1. **内存使用**: 根据GPU内存调整batch_size
-2. **训练时间**: 预训练需要较长时间，建议使用GPU
-3. **数据下载**: UTSD数据集较大，首次下载需要时间
-4. **模型保存**: 模型会自动保存最佳和最终版本
+1. **Memory Usage**: Adjust batch_size based on GPU memory
+2. **Training Time**: Pretraining takes a long time, GPU recommended
+3. **Data Download**: UTSD dataset is large, first download takes time
+4. **Model Saving**: Models are automatically saved as best and final versions
 
-## 🤝 获取帮助
+## 🤝 Getting Help
 
 ```bash
 python scripts/train.py --help
 ```
 
-## 📚 相关资源
+## 📚 Related Resources
 
-- [UTSD数据集](https://huggingface.co/datasets/thuml/UTSD)
-- [Timer模型](https://huggingface.co/thuml/timer-base-84m)
+- [UTSD Dataset](https://huggingface.co/datasets/thuml/UTSD)
+- [Timer Model](https://huggingface.co/thuml/timer-base-84m)
 
-## 📊 模型评测
+## 📊 Model Evaluation
 
-### 在标准数据集上评测
+### Evaluate on Standard Datasets
 
 ```bash
-# 使用预训练模型评测
+# Evaluate with pretrained model
 python scripts/evaluate.py \
     --model-path pretrain_outputs/best_model \
     --datasets ETTH1 ECL TRAFFIC WEATHER PEMS03 PEMS04 \
@@ -404,7 +421,7 @@ python scripts/evaluate.py \
     --batch-size 32 \
     --output-dir evaluation_results
 
-# 使用HuggingFace模型评测
+# Evaluate with HuggingFace model
 python scripts/evaluate.py \
     --huggingface-model thuml/timer-base-84m \
     --datasets ETTH1 ECL TRAFFIC WEATHER PEMS03 PEMS04 \
@@ -412,19 +429,19 @@ python scripts/evaluate.py \
     --pred-len 96 \
     --output-dir evaluation_results
 
-# 注意：必须使用 --datasets（两个短横线），不是 datasets
+# Note: Must use --datasets (two dashes), not datasets
 ```
 
-### 评测指标
+### Evaluation Metrics
 
-- **MSE**: 均方误差
-- **MAE**: 平均绝对误差
-- **RMSE**: 均方根误差
-- **MAPE**: 平均绝对百分比误差
-- **Direction Acc**: 方向准确率（预测方向是否正确）
+- **MSE**: Mean Squared Error
+- **MAE**: Mean Absolute Error
+- **RMSE**: Root Mean Squared Error
+- **MAPE**: Mean Absolute Percentage Error
+- **Direction Acc**: Direction Accuracy (whether prediction direction is correct)
 
-评测结果会保存为JSON文件，并打印汇总表格。
+Evaluation results are saved as JSON file and printed as summary table.
 
-## 📄 许可证
+## 📄 License
 
-请参考LICENSE文件。
+Please refer to the LICENSE file.
