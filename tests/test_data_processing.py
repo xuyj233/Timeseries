@@ -68,11 +68,12 @@ class TestS3Preprocessor:
             random_seed=42
         )
         
-        series = np.random.randn(1000)
-        normalized_series = preprocessor.process_single_series(series, "test_series")
+        series = np.random.randn(1000).astype(np.float32)
+        normalized_series = preprocessor.process_variate(series, "test_series")
         
         assert normalized_series is not None
         assert len(normalized_series) == len(series)
+        assert "test_series" in preprocessor.normalization_stats
     
     def test_merge_sequences(self):
         """Test merging sequences"""
@@ -83,10 +84,14 @@ class TestS3Preprocessor:
             random_seed=42
         )
         
-        series_list = [
-            np.random.randn(100) for _ in range(5)
-        ]
-        preprocessor.merge_sequences(series_list)
+        # First process and normalize series
+        series_list = []
+        for i in range(5):
+            series = np.random.randn(100).astype(np.float32)
+            normalized = preprocessor.process_variate(series, f"series_{i}")
+            series_list.append(normalized)
+        
+        preprocessor.merge_to_pool(series_list)
         
         assert len(preprocessor.sequence_pool) > 0
     
@@ -99,11 +104,14 @@ class TestS3Preprocessor:
             random_seed=42
         )
         
-        # Add some sequences to pool
-        series_list = [
-            np.random.randn(1000) for _ in range(5)
-        ]
-        preprocessor.merge_sequences(series_list)
+        # Add some sequences to pool (first normalize them)
+        series_list = []
+        for i in range(5):
+            series = np.random.randn(1000).astype(np.float32)
+            normalized = preprocessor.process_variate(series, f"series_{i}")
+            series_list.append(normalized)
+        
+        preprocessor.merge_to_pool(series_list)
         
         # Sample sequences
         sampled = preprocessor.sample_sequences(num_samples=10, stride=256)
