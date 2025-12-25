@@ -2,56 +2,79 @@
 
 A complete Timer model training framework supporting both pretraining and fine-tuning, with support for multiple model structures and datasets.
 
+## Table of Contents
+
+1. [Features](#-features)
+2. [Installation](#-installation)
+3. [Quick Start](#-quick-start)
+4. [Data Sources](#-data-sources)
+   - [UTSD Dataset](#utsd-dataset)
+   - [Standard Time Series Datasets](#standard-time-series-datasets)
+   - [CSV Files (Cryptocurrency Dataset)](#csv-files-cryptocurrency-dataset)
+   - [Local Data](#local-data)
+5. [Training](#-training)
+   - [Training Modes](#training-modes)
+   - [Model Structures](#model-structures)
+   - [Hyperparameters](#hyperparameters)
+   - [S3 Format](#s3-format)
+6. [Evaluation](#-evaluation)
+7. [Configuration](#-configuration)
+8. [Project Structure](#-project-structure)
+9. [Examples](#-examples)
+10. [Advanced Usage](#-advanced-usage)
+11. [Troubleshooting](#-troubleshooting)
+12. [References](#-references)
+
+---
+
 ## ✨ Features
 
 - **Unified Training Entry**: One script supports both pretraining and fine-tuning
 - **Multiple Model Structures**: Supports tiny/small/base/large model structures
-- **Multiple Data Sources**: Supports local data and UTSD dataset
+- **Multiple Data Sources**: Supports UTSD, standard datasets, CSV files, and local data
+- **Cryptocurrency Dataset Support**: Direct pretraining on CSV files with multiple factor columns
 - **Mirror Support**: Automatically downloads models and datasets from hf-mirror.com
 - **Flexible Configuration**: Supports command-line arguments and configuration files
 - **Modular Design**: Clear code structure, easy to maintain and extend
 
-## 📋 Quick Start
+---
 
-### 1. Install Dependencies
+## 📦 Installation
+
+### Prerequisites
+
+- Python 3.7+
+- PyTorch 1.8+
+- CUDA (optional, for GPU acceleration)
+
+### Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. One-Click Run (Pretraining + Evaluation)
+---
+
+## 🚀 Quick Start
+
+### One-Click Run (Pretraining + Evaluation)
 
 Use the provided scripts to complete pretraining and evaluation in one go:
 
-**Linux/Mac (Bash):**
+**Linux/Mac:**
 ```bash
-# Complete workflow: pretraining + evaluation
 bash scripts/run_pretrain_and_eval.sh
-
-# Only run pretraining
-bash scripts/run_pretrain_and_eval.sh --skip-eval
-
-# Only run evaluation (requires existing pretrained model)
-bash scripts/run_pretrain_and_eval.sh --skip-pretrain
-
-# Show help
-bash scripts/run_pretrain_and_eval.sh --help
 ```
 
-**Windows (Batch):**
+**Windows:**
 ```cmd
-REM Complete workflow: pretraining + evaluation
 scripts\run_pretrain_and_eval.bat
-
-REM Only run pretraining
-scripts\run_pretrain_and_eval.bat --skip-eval
-
-REM Only run evaluation (requires existing pretrained model)
-scripts\run_pretrain_and_eval.bat --skip-pretrain
-
-REM Show help
-scripts\run_pretrain_and_eval.bat --help
 ```
+
+**Options:**
+- `--skip-pretrain`: Skip pretraining, only run evaluation
+- `--skip-eval`: Skip evaluation, only run pretraining
+- `--help`: Show help message
 
 The scripts will automatically:
 - ✅ Check Python environment and dependencies
@@ -61,174 +84,67 @@ The scripts will automatically:
 - ✅ Perform pretraining (using paper-recommended hyperparameters)
 - ✅ Evaluate on ETTH1, ECL, TRAFFIC, WEATHER, PEMS03, PEMS04
 - ✅ Save results to `outputs/` directory
-- ✅ Display evaluation results summary
 
-### 3. Start Training
+### Basic Training Commands
 
-#### Pretraining with UTSD Dataset (Recommended: S3 Format)
-
+**Pretraining:**
 ```bash
-# Use S3 format preprocessing (recommended, follows paper methodology)
+python scripts/train.py --mode pretrain --data-source utsd-s3 --utsd-subset UTSD-1G
+```
+
+**Fine-tuning:**
+```bash
+python scripts/train.py --mode finetune --data-source standard --standard-dataset ETTH1
+```
+
+**CSV Pretraining (Cryptocurrency):**
+```bash
+python scripts/train.py --mode pretrain --data-source csv --csv-path data/selected_factors.csv
+```
+
+---
+
+## 📊 Data Sources
+
+The framework supports multiple data sources for different use cases.
+
+### UTSD Dataset
+
+**Description**: Large-scale univariate time series dataset for pretraining.
+
+**Subsets**:
+- `UTSD-1G`: 1GB data subset (~68.7k samples)
+- `UTSD-2G`: 2GB data subset (~75.4k samples)
+- `UTSD-4G`: 4GB data subset
+- `UTSD-12G`: 12GB data subset
+- Not specified: Full dataset (~434k samples)
+
+**Usage**:
+```bash
+# S3 format (recommended for pretraining)
 python scripts/train.py \
     --mode pretrain \
     --data-source utsd-s3 \
     --utsd-subset UTSD-1G \
-    --model-structure base \
-    --context-length 512 \
-    --batch-size 4 \
-    --num-epochs 20 \
-    --output-dir pretrain_outputs
+    --context-length 512
 
-# Or use original UTSD format
+# Original format
 python scripts/train.py \
     --mode pretrain \
     --data-source utsd \
-    --utsd-subset UTSD-1G \
-    --model-structure base \
-    --batch-size 4 \
-    --num-epochs 20 \
-    --output-dir pretrain_outputs
+    --utsd-subset UTSD-1G
 ```
 
-#### Fine-tuning with Standard Datasets (ETTH1, ECL, TRAFFIC, etc.)
-
+**Download**:
 ```bash
-# Single dataset
-python scripts/train.py \
-    --mode finetune \
-    --data-source standard \
-    --standard-dataset ETTH1 \
-    --lookback 672 \
-    --pred-len 96 \
-    --batch-size 4 \
-    --num-epochs 10 \
-    --output-dir finetune_etth1
-
-# Multiple datasets
-python scripts/train.py \
-    --mode finetune \
-    --data-source standard \
-    --standard-datasets ETTH1 ECL TRAFFIC WEATHER PEMS03 PEMS04 \
-    --lookback 672 \
-    --pred-len 96 \
-    --batch-size 4 \
-    --num-epochs 10 \
-    --output-dir finetune_multiple
+python scripts/download_utsd.py --subset UTSD-1G
 ```
-
-#### Fine-tuning with Local Data
-
-```bash
-# 1. Prepare data
-python scripts/prepare_data.py --csv-path <your_data.csv> --output-dir data
-
-# 2. Start fine-tuning
-python scripts/train.py \
-    --mode finetune \
-    --data-source local \
-    --data-dir data \
-    --batch-size 4 \
-    --num-epochs 10 \
-    --output-dir finetune_outputs
-```
-
-#### Pretraining with CSV File (Cryptocurrency Dataset)
-
-The framework supports pretraining directly on CSV files, which is particularly useful for cryptocurrency time series data. Each column in the CSV file is treated as an independent time series variable.
-
-**Dataset Format**:
-- CSV file with datetime column (optional, will be excluded automatically)
-- Multiple numeric columns representing different features/factors
-- Each column is processed as a separate univariate time series
-- Example: `selected_factors.csv` contains cryptocurrency factor data with datetime and multiple factor columns
-
-**Usage**:
-```bash
-# Pretrain on CSV file (e.g., selected_factors.csv - cryptocurrency factors)
-python scripts/train.py \
-    --mode pretrain \
-    --data-source csv \
-    --csv-path data/selected_factors.csv \
-    --csv-date-col datetime \
-    --model-structure base \
-    --context-length 512 \
-    --batch-size 4 \
-    --num-epochs 10 \
-    --output-dir pretrain_csv_outputs
-
-# Or use the convenience script
-scripts\pretrain_csv.bat  # Windows
-```
-
-**CSV Pretraining Process**:
-1. Each numeric column is extracted as an independent time series
-2. Each series is normalized using training set statistics (9:1 split)
-3. Normalized sequences are merged into a single sequence pool
-4. Fixed-length windows are sampled uniformly from the pool
-5. The model is trained on these windows using S3 format
-
-**Parameters**:
-- `--csv-path`: Path to CSV file
-- `--csv-date-col`: Date column name (default: 'datetime', will be excluded)
-- `--csv-exclude-cols`: Additional columns to exclude (optional)
-- `--max-variates`: Maximum number of columns to process (optional, for limiting data size)
-
-## 📖 Detailed Usage
-
-### Training Modes
-
-- `--mode pretrain`: Pretrain from scratch
-- `--mode finetune`: Fine-tune (from pretrained model or HuggingFace model)
-
-### Data Sources
-
-- `--data-source local`: Use local data (prepared via prepare_data.py)
-- `--data-source utsd`: Use UTSD dataset (original format, auto-download)
-- `--data-source utsd-s3`: Use UTSD dataset (S3 format, recommended for pretraining)
-- `--data-source standard`: Use standard time series datasets (ETTH1, ECL, TRAFFIC, WEATHER, PEMS03, PEMS04, etc.)
-- `--data-source csv`: Use CSV file for pretraining
-
-**S3 Format Description**:
-S3 (Single-Series Sequence) format is a preprocessing method proposed in the paper, suitable for pretraining:
-- Each variable sequence is split 9:1, normalized using training set statistics
-- Normalized sequences are merged into a single-variate sequence pool
-- Fixed-length window sequences are uniformly sampled from the pool
-- No time alignment required, suitable for a wide range of univariate and irregular time series
-
-**Local Cache Functionality**:
-- Processed data is automatically saved to `data/` directory
-- Second run will automatically use cache, no need to re-download and process
-- Use `--no-cache` to force reprocessing
-- Cache files include:
-  - `train_sequences.pkl`: Training sequences
-  - `val_sequences.pkl`: Validation sequences
-  - `data_config.pkl`: Data configuration
-
-### Model Structures
-
-- `--model-structure tiny`: Small model (256 hidden, 4 layers)
-- `--model-structure small`: Medium-small model (512 hidden, 6 layers)
-- `--model-structure base`: Base model (1024 hidden, 8 layers)
-- `--model-structure large`: Large model (2048 hidden, 12 layers)
-
-You can also override with custom parameters:
-```bash
---hidden-size 512 --num-layers 6 --num-heads 8
-```
-
-### Training Hyperparameters (Paper Settings)
-
-- **Optimizer**: AdamW (default)
-- **Learning Rate Schedule**: Cosine Annealing (default)
-  - Base learning rate: `5e-5` (paper default)
-  - Final learning rate: `2e-6` (paper default)
-  - Decay steps: Proportional to training steps for 10 epochs
-- **Batch Size**: Paper uses 8192 (adjust based on GPU memory)
-- **Pretraining Token Count**: N=15 (can be set via `--input-token-len`)
 
 ### Standard Time Series Datasets
 
-Supports the following standard datasets (auto-download):
+**Description**: Standard benchmark datasets for time series forecasting.
+
+**Supported Datasets**:
 - `ETTH1`, `ETTH2`: Electric transformer temperature data
 - `ETTM1`, `ETTM2`: Electric transformer temperature data (minute-level)
 - `ECL`: Electricity consumption data
@@ -240,43 +156,204 @@ Supports the following standard datasets (auto-download):
 - Lookback length: 672
 - Prediction length: 96
 
-**Usage Examples**:
+**Usage**:
 ```bash
 # Single dataset
---data-source standard --standard-dataset ETTH1
+python scripts/train.py \
+    --mode finetune \
+    --data-source standard \
+    --standard-dataset ETTH1 \
+    --lookback 672 \
+    --pred-len 96
 
 # Multiple datasets
---data-source standard --standard-datasets ETTH1 ECL TRAFFIC WEATHER PEMS03 PEMS04
+python scripts/train.py \
+    --mode finetune \
+    --data-source standard \
+    --standard-datasets ETTH1 ECL TRAFFIC WEATHER PEMS03 PEMS04
 ```
 
-### UTSD Dataset Subsets
+### CSV Files (Cryptocurrency Dataset)
 
-- `UTSD-1G`: 1GB data subset (~68.7k samples)
-- `UTSD-2G`: 2GB data subset (~75.4k samples)
-- `UTSD-4G`: 4GB data subset
-- `UTSD-12G`: 12GB data subset
-- Not specified: Use full dataset (~434k samples)
+**Description**: Direct pretraining on CSV files, particularly useful for cryptocurrency time series data. Each column is treated as an independent time series variable.
 
-### S3 Format Parameters
+**Dataset Format**:
+- CSV file with datetime column (optional, automatically excluded)
+- Multiple numeric columns representing different features/factors
+- Each column is processed as a separate univariate time series
 
-- `--context-length`: Context length for S3 format (default 512)
-- `--s3-train-samples`: Number of training samples (None means use all available samples)
-- `--s3-val-samples`: Number of validation samples
+**Example**: `selected_factors.csv` contains cryptocurrency factor data with:
+- `datetime`: Timestamp column (automatically excluded)
+- Multiple factor columns: Technical indicators and features (e.g., alpha_volumeBS_2MA, alpha_opint_volume, caspar_hf_factor, etc.)
 
-### CSV File Parameters (Cryptocurrency Dataset)
+**Usage**:
+```bash
+# Direct pretraining on CSV
+python scripts/train.py \
+    --mode pretrain \
+    --data-source csv \
+    --csv-path data/selected_factors.csv \
+    --csv-date-col datetime \
+    --model-structure base \
+    --context-length 512 \
+    --batch-size 4 \
+    --num-epochs 10 \
+    --output-dir pretrain_csv_outputs
 
-- `--csv-path`: Path to CSV file (required for `--data-source csv`)
+# Or use convenience script (Windows)
+scripts\pretrain_csv.bat
+```
+
+**Processing Pipeline**:
+1. Each numeric column is extracted as an independent time series
+2. Each series is normalized using training set statistics (9:1 split)
+3. Normalized sequences are merged into a single sequence pool
+4. Fixed-length windows are sampled uniformly from the pool
+5. Model is trained on these windows using S3 format
+
+**Parameters**:
+- `--csv-path`: Path to CSV file (required)
 - `--csv-date-col`: Date column name to exclude (default: 'datetime')
 - `--csv-exclude-cols`: Additional columns to exclude (optional)
-- `--max-variates`: Maximum number of columns to process (optional, for limiting data size)
+- `--max-variates`: Maximum number of columns to process (optional)
 
-**Cryptocurrency Dataset Example**:
-The `selected_factors.csv` file contains cryptocurrency factor data with:
-- `datetime`: Timestamp column (automatically excluded)
-- Multiple factor columns: Various technical indicators and features (e.g., alpha_volumeBS_2MA, alpha_opint_volume, caspar_hf_factor, etc.)
-- Each factor column is treated as an independent time series
-- The framework automatically normalizes and processes each column using S3 format
-- Suitable for pretraining on multi-factor cryptocurrency time series data
+### Local Data
+
+**Description**: Use locally prepared data files.
+
+**Preparation**:
+```bash
+python scripts/prepare_data.py --csv-path <your_data.csv> --output-dir data
+```
+
+**Usage**:
+```bash
+python scripts/train.py \
+    --mode finetune \
+    --data-source local \
+    --data-dir data \
+    --batch-size 4 \
+    --num-epochs 10
+```
+
+---
+
+## 🎓 Training
+
+### Training Modes
+
+- **`--mode pretrain`**: Pretrain from scratch
+  - Suitable for: UTSD dataset, CSV files
+  - Output: Pretrained model weights
+
+- **`--mode finetune`**: Fine-tune from pretrained model
+  - Suitable for: Standard datasets, local data
+  - Input: Pretrained model (local or HuggingFace)
+  - Output: Fine-tuned model weights
+
+### Model Structures
+
+Predefined model structures:
+
+| Structure | Hidden Size | Layers | Heads | Use Case |
+|-----------|-------------|--------|-------|----------|
+| `tiny`    | 256         | 4      | 4     | Quick testing |
+| `small`   | 512         | 6      | 8     | Small-scale experiments |
+| `base`    | 1024        | 8      | 8     | Standard training (recommended) |
+| `large`   | 2048        | 12     | 16    | Large-scale training |
+
+**Usage**:
+```bash
+--model-structure base
+```
+
+**Custom Parameters**:
+```bash
+--hidden-size 512 --num-layers 6 --num-heads 8
+```
+
+### Hyperparameters
+
+**Default Settings (Paper Recommendations)**:
+
+- **Optimizer**: AdamW
+- **Learning Rate Schedule**: Cosine Annealing
+  - Base learning rate: `5e-5`
+  - Minimum learning rate: `2e-6`
+  - Decay steps: Proportional to training steps for 10 epochs
+- **Batch Size**: Adjust based on GPU memory (paper uses 8192)
+- **Weight Decay**: `0.01`
+- **Pretraining Token Count**: N=15 (configurable via `--input-token-len`)
+
+**Configuration**:
+```bash
+--learning-rate 5e-5 \
+--min-learning-rate 2e-6 \
+--scheduler-type cosine \
+--batch-size 4 \
+--num-epochs 10
+```
+
+### S3 Format
+
+**Description**: Single-Series Sequence (S3) format is a preprocessing method proposed in the paper, suitable for pretraining on heterogeneous time series.
+
+**Key Features**:
+- Each variable sequence is split 9:1 (train/val)
+- Normalized using training set statistics
+- Normalized sequences merged into single-variate sequence pool
+- Fixed-length windows uniformly sampled from pool
+- No time alignment required
+- Suitable for univariate and irregular time series
+
+**Parameters**:
+- `--context-length`: Context length for S3 format (default: 512)
+- `--s3-train-samples`: Number of training samples (None = use all)
+- `--s3-val-samples`: Number of validation samples
+
+**Cache**:
+- Processed data automatically saved to `data/` directory
+- Second run uses cache automatically
+- Use `--no-cache` to force reprocessing
+
+---
+
+## 📈 Evaluation
+
+### Evaluate on Standard Datasets
+
+```bash
+# Using pretrained model
+python scripts/evaluate.py \
+    --model-path pretrain_outputs/best_model \
+    --datasets ETTH1 ECL TRAFFIC WEATHER PEMS03 PEMS04 \
+    --lookback 672 \
+    --pred-len 96 \
+    --batch-size 32 \
+    --output-dir evaluation_results
+
+# Using HuggingFace model
+python scripts/evaluate.py \
+    --huggingface-model thuml/timer-base-84m \
+    --datasets ETTH1 ECL TRAFFIC WEATHER PEMS03 PEMS04 \
+    --lookback 672 \
+    --pred-len 96 \
+    --output-dir evaluation_results
+```
+
+### Evaluation Metrics
+
+- **MSE**: Mean Squared Error
+- **MAE**: Mean Absolute Error
+- **RMSE**: Root Mean Squared Error
+- **MAPE**: Mean Absolute Percentage Error
+- **Direction Acc**: Direction Accuracy (prediction direction correctness)
+
+Results are saved as JSON file and printed as summary table.
+
+---
+
+## ⚙️ Configuration
 
 ### Complete Parameter List
 
@@ -284,99 +361,257 @@ The `selected_factors.csv` file contains cryptocurrency factor data with:
 python scripts/train.py --help
 ```
 
+### Key Parameters
+
+**Data Source**:
+- `--data-source`: `local`, `utsd`, `utsd-s3`, `standard`, `csv`
+- `--data-dir`: Data directory path
+- `--csv-path`: CSV file path (for CSV source)
+- `--csv-date-col`: Date column name (default: 'datetime')
+- `--standard-dataset`: Single standard dataset name
+- `--standard-datasets`: Multiple standard dataset names
+
+**Model**:
+- `--model-structure`: `tiny`, `small`, `base`, `large`
+- `--pretrained-model`: Path to pretrained model
+- `--huggingface-model`: HuggingFace model name
+
+**Training**:
+- `--mode`: `pretrain` or `finetune`
+- `--batch-size`: Batch size
+- `--num-epochs`: Number of epochs
+- `--learning-rate`: Base learning rate
+- `--min-learning-rate`: Minimum learning rate
+- `--scheduler-type`: `cosine` or `linear`
+- `--output-dir`: Output directory
+
+**Data Processing**:
+- `--context-length`: S3 format context length
+- `--lookback`: Lookback window length
+- `--pred-len`: Prediction length
+- `--use-cache`: Use cached data (default: True)
+- `--no-cache`: Force reprocessing
+
+---
+
 ## 🔧 Project Structure
 
 ```
 timer_finetune/
-├── models/              # Model modules
-│   ├── __init__.py
-│   ├── timer_config.py  # Timer model configuration
-│   └── timer_model.py   # Timer model implementation
+├── models/                  # Model modules
+│   ├── timer_config.py      # Timer model configuration
+│   └── timer_model.py       # Timer model implementation
 │
-├── data_processing/     # Data processing modules (code)
-│   ├── __init__.py
-│   ├── dataset.py       # Time series dataset classes
-│   ├── data_loader.py   # Data loaders
-│   ├── utsd_dataset.py  # UTSD dataset support
+├── data_processing/         # Data processing modules
+│   ├── dataset.py           # Time series dataset classes
+│   ├── data_loader.py       # Data loaders
+│   ├── utsd_dataset.py      # UTSD dataset support
 │   ├── s3_preprocessor.py  # S3 format preprocessing
-│   └── standard_datasets.py  # Standard dataset support
+│   └── standard_datasets.py # Standard dataset support
 │
-├── data/                # Data directory (actual data files)
-│   ├── utsd/            # UTSD dataset cache
-│   ├── s3/              # S3 format data
-│   └── standard_datasets/  # Standard datasets
+├── data/                    # Data directory
+│   ├── utsd/                # UTSD dataset cache
+│   ├── s3/                  # S3 format data
+│   └── standard_datasets/    # Standard datasets
 │
-├── training/            # Training modules
-│   ├── __init__.py
-│   ├── trainer.py       # Pretraining trainer
+├── training/                # Training modules
+│   ├── trainer.py           # Pretraining trainer
 │   └── finetune_trainer.py  # Fine-tuning trainer
 │
-├── utils/               # Utility function modules
-│   ├── __init__.py
-│   └── model_utils.py   # Model utility functions
+├── utils/                   # Utility functions
+│   └── model_utils.py       # Model utilities
 │
-├── scripts/             # Script modules
-│   ├── __init__.py
-│   ├── train.py         # Unified training entry
-│   ├── evaluate.py      # Model evaluation script
-│   ├── run_pretrain_and_eval.sh  # One-click run script (Linux/Mac)
-│   ├── run_pretrain_and_eval.bat # One-click run script (Windows)
-│   ├── pretrain_csv.bat # CSV pretraining script
-│   └── prepare_data.py  # Data preparation script
+├── scripts/                 # Scripts
+│   ├── train.py             # Unified training entry
+│   ├── evaluate.py          # Model evaluation
+│   ├── run_pretrain_and_eval.sh  # One-click script (Linux/Mac)
+│   ├── run_pretrain_and_eval.bat # One-click script (Windows)
+│   ├── pretrain_csv.bat     # CSV pretraining script
+│   └── prepare_data.py      # Data preparation
 │
-├── outputs/             # Output directory (models and results)
+├── outputs/                 # Output directory
 │
-├── README.md            # This document
-├── requirements.txt     # Dependencies
-└── LICENSE              # License
+├── README.md                # This document
+├── requirements.txt         # Dependencies
+└── LICENSE                  # License
 ```
 
 **Note**:
-- `data_processing/` folder contains data processing related **code modules** (to avoid conflicts with HuggingFace's datasets library)
-- `data/` folder stores **actual data files** (downloaded datasets, preprocessed data, etc.)
-- `outputs/` folder stores training outputs (model weights, training history, evaluation results, etc.)
+- `data_processing/`: Code modules for data processing
+- `data/`: Actual data files (downloaded datasets, preprocessed data)
+- `outputs/`: Training outputs (model weights, training history, evaluation results)
 
-## 🚀 Usage Examples
+---
 
-### Pretrain Small Model (S3 Format, Paper Hyperparameters)
+## 💡 Examples
+
+### Example 1: Pretrain on Cryptocurrency Dataset
+
+```bash
+# Pretrain on selected_factors.csv
+python scripts/train.py \
+    --mode pretrain \
+    --data-source csv \
+    --csv-path data/selected_factors.csv \
+    --csv-date-col datetime \
+    --model-structure base \
+    --context-length 512 \
+    --batch-size 4 \
+    --num-epochs 10 \
+    --learning-rate 5e-5 \
+    --min-learning-rate 2e-6 \
+    --scheduler-type cosine \
+    --output-dir outputs/pretrain_crypto
+```
+
+### Example 2: Pretrain on UTSD (S3 Format)
 
 ```bash
 python scripts/train.py \
     --mode pretrain \
     --data-source utsd-s3 \
     --utsd-subset UTSD-1G \
-    --model-structure small \
+    --model-structure base \
     --context-length 512 \
-    --batch-size 8 \
+    --batch-size 4 \
     --num-epochs 10 \
-    --learning-rate 5e-5 \
-    --min-learning-rate 2e-6 \
-    --scheduler-type cosine \
-    --output-dir pretrain_small
+    --output-dir outputs/pretrain_utsd
 ```
 
-**Note**: The paper uses batch size=8192, but adjust based on GPU memory. You can use gradient accumulation to simulate large batch size.
-
-### Fine-tune Large Model
+### Example 3: Fine-tune on Standard Dataset
 
 ```bash
 python scripts/train.py \
     --mode finetune \
-    --data-source local \
-    --data-dir data \
-    --model-structure large \
-    --pretrained-model pretrain_outputs/best_model \
-    --batch-size 2 \
-    --num-epochs 20 \
-    --learning-rate 1e-5 \
-    --output-dir finetune_large
+    --data-source standard \
+    --standard-dataset ETTH1 \
+    --pretrained-model outputs/pretrain_crypto/best_model \
+    --lookback 672 \
+    --pred-len 96 \
+    --batch-size 4 \
+    --num-epochs 10 \
+    --output-dir outputs/finetune_etth1
 ```
 
-### Download UTSD Dataset
+### Example 4: Complete Workflow
 
 ```bash
-python scripts/download_utsd.py --subset UTSD-1G
+# Step 1: Pretrain on cryptocurrency data
+python scripts/train.py \
+    --mode pretrain \
+    --data-source csv \
+    --csv-path data/selected_factors.csv \
+    --output-dir outputs/pretrain
+
+# Step 2: Evaluate pretrained model
+python scripts/evaluate.py \
+    --model-path outputs/pretrain/best_model \
+    --datasets ETTH1 ECL TRAFFIC \
+    --output-dir outputs/evaluation
+
+# Step 3: Fine-tune on specific dataset
+python scripts/train.py \
+    --mode finetune \
+    --data-source standard \
+    --standard-dataset ETTH1 \
+    --pretrained-model outputs/pretrain/best_model \
+    --output-dir outputs/finetune
 ```
+
+---
+
+## 🔬 Advanced Usage
+
+### Custom Model Architecture
+
+```bash
+python scripts/train.py \
+    --mode pretrain \
+    --data-source csv \
+    --csv-path data/selected_factors.csv \
+    --hidden-size 768 \
+    --num-layers 10 \
+    --num-heads 12 \
+    --intermediate-size 3072 \
+    --input-token-len 96 \
+    --output-token-lens 96 192
+```
+
+### Gradient Accumulation
+
+For large batch size simulation:
+```bash
+# Use smaller batch size with gradient accumulation
+--batch-size 4  # Effective batch size = 4 * accumulation_steps
+```
+
+### Mixed Precision Training
+
+The framework automatically uses mixed precision if available (PyTorch 1.6+).
+
+### Resume Training
+
+```bash
+# Continue from checkpoint
+--pretrained-model outputs/pretrain/best_model
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **Out of Memory**
+   - Reduce `--batch-size`
+   - Use smaller `--model-structure`
+   - Reduce `--context-length`
+
+2. **Slow Data Loading**
+   - Use `--use-cache` to enable caching
+   - Check if data is already processed
+
+3. **CUDA Not Available**
+   - Framework automatically falls back to CPU
+   - Training will be slower
+
+4. **Large CSV Files**
+   - Use `--max-variates` to limit number of columns
+   - Process data in chunks
+
+### Getting Help
+
+```bash
+# Show help for training script
+python scripts/train.py --help
+
+# Show help for evaluation script
+python scripts/evaluate.py --help
+```
+
+---
+
+## 📚 References
+
+- [UTSD Dataset](https://huggingface.co/datasets/thuml/UTSD)
+- [Timer Model](https://huggingface.co/thuml/timer-base-84m)
+
+### Mirror Configuration
+
+The framework automatically uses hf-mirror.com mirror. To switch:
+
+```bash
+export HF_ENDPOINT=https://hf-mirror.com  # Use mirror
+export HF_ENDPOINT=https://huggingface.co  # Use official
+```
+
+---
+
+## 📄 License
+
+Please refer to the LICENSE file.
+
+---
 
 ## 📊 Output Files
 
@@ -389,100 +624,3 @@ After training completes, the output directory contains:
 - `final_model/`: Model from last epoch
 - `training_history.json`: Training history data
 - `training_curves.png`: Training curves plot
-
-## 🔄 Workflow
-
-### Complete Pretraining Workflow
-
-1. **Download UTSD Dataset** (optional)
-   ```bash
-   python scripts/download_utsd.py --subset UTSD-1G
-   ```
-
-2. **Start Pretraining**
-   ```bash
-   python scripts/train.py --mode pretrain --data-source utsd --utsd-subset UTSD-1G
-   ```
-
-3. **Fine-tune with Pretrained Model**
-   ```bash
-   python scripts/train.py --mode finetune --pretrained-model pretrain_outputs/best_model
-   ```
-
-### Fine-tuning Workflow
-
-1. **Prepare Local Data**
-   ```bash
-   python scripts/prepare_data.py --csv-path <path> --output-dir data
-   ```
-
-2. **Fine-tune from HuggingFace Model**
-   ```bash
-   python scripts/train.py --mode finetune --data-source local --data-dir data
-   ```
-
-## 🌐 Mirror Support
-
-The framework automatically uses hf-mirror.com mirror, no additional configuration needed. To switch:
-
-```bash
-export HF_ENDPOINT=https://hf-mirror.com  # Use mirror
-export HF_ENDPOINT=https://huggingface.co  # Use official
-```
-
-## 📝 Notes
-
-1. **Memory Usage**: Adjust batch_size based on GPU memory
-2. **Training Time**: Pretraining takes a long time, GPU recommended
-3. **Data Download**: UTSD dataset is large, first download takes time
-4. **Model Saving**: Models are automatically saved as best and final versions
-
-## 🤝 Getting Help
-
-```bash
-python scripts/train.py --help
-```
-
-## 📚 Related Resources
-
-- [UTSD Dataset](https://huggingface.co/datasets/thuml/UTSD)
-- [Timer Model](https://huggingface.co/thuml/timer-base-84m)
-
-## 📊 Model Evaluation
-
-### Evaluate on Standard Datasets
-
-```bash
-# Evaluate with pretrained model
-python scripts/evaluate.py \
-    --model-path pretrain_outputs/best_model \
-    --datasets ETTH1 ECL TRAFFIC WEATHER PEMS03 PEMS04 \
-    --lookback 672 \
-    --pred-len 96 \
-    --batch-size 32 \
-    --output-dir evaluation_results
-
-# Evaluate with HuggingFace model
-python scripts/evaluate.py \
-    --huggingface-model thuml/timer-base-84m \
-    --datasets ETTH1 ECL TRAFFIC WEATHER PEMS03 PEMS04 \
-    --lookback 672 \
-    --pred-len 96 \
-    --output-dir evaluation_results
-
-# Note: Must use --datasets (two dashes), not datasets
-```
-
-### Evaluation Metrics
-
-- **MSE**: Mean Squared Error
-- **MAE**: Mean Absolute Error
-- **RMSE**: Root Mean Squared Error
-- **MAPE**: Mean Absolute Percentage Error
-- **Direction Acc**: Direction Accuracy (whether prediction direction is correct)
-
-Evaluation results are saved as JSON file and printed as summary table.
-
-## 📄 License
-
-Please refer to the LICENSE file.
