@@ -132,20 +132,46 @@ python scripts/train.py \
     --output-dir finetune_outputs
 ```
 
-#### Pretraining with CSV File
+#### Pretraining with CSV File (Cryptocurrency Dataset)
 
+The framework supports pretraining directly on CSV files, which is particularly useful for cryptocurrency time series data. Each column in the CSV file is treated as an independent time series variable.
+
+**Dataset Format**:
+- CSV file with datetime column (optional, will be excluded automatically)
+- Multiple numeric columns representing different features/factors
+- Each column is processed as a separate univariate time series
+- Example: `selected_factors.csv` contains cryptocurrency factor data with datetime and multiple factor columns
+
+**Usage**:
 ```bash
-# Pretrain on CSV file (e.g., selected_factors.csv)
+# Pretrain on CSV file (e.g., selected_factors.csv - cryptocurrency factors)
 python scripts/train.py \
     --mode pretrain \
     --data-source csv \
     --csv-path data/selected_factors.csv \
+    --csv-date-col datetime \
     --model-structure base \
     --context-length 512 \
     --batch-size 4 \
     --num-epochs 10 \
     --output-dir pretrain_csv_outputs
+
+# Or use the convenience script
+scripts\pretrain_csv.bat  # Windows
 ```
+
+**CSV Pretraining Process**:
+1. Each numeric column is extracted as an independent time series
+2. Each series is normalized using training set statistics (9:1 split)
+3. Normalized sequences are merged into a single sequence pool
+4. Fixed-length windows are sampled uniformly from the pool
+5. The model is trained on these windows using S3 format
+
+**Parameters**:
+- `--csv-path`: Path to CSV file
+- `--csv-date-col`: Date column name (default: 'datetime', will be excluded)
+- `--csv-exclude-cols`: Additional columns to exclude (optional)
+- `--max-variates`: Maximum number of columns to process (optional, for limiting data size)
 
 ## 📖 Detailed Usage
 

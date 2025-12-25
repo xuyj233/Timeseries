@@ -5,7 +5,7 @@ REM ============================================================================
 
 setlocal enabledelayedexpansion
 
-REM 配置参数
+REM Configuration parameters
 set CSV_PATH=data\selected_factors.csv
 set MODEL_STRUCTURE=base
 set BATCH_SIZE=4
@@ -16,30 +16,30 @@ set CONTEXT_LENGTH=512
 set OUTPUT_DIR=outputs\pretrain_csv
 
 echo ============================================================================
-echo Running pretraining on selected_factors.csv
+echo Running pretraining on selected_factors.csv (Cryptocurrency Dataset)
 echo ============================================================================
 echo.
 
-REM 检查CSV文件是否存在
+REM Check if CSV file exists
 if not exist "%CSV_PATH%" (
-    echo [ERROR] CSV文件不存在: %CSV_PATH%
+    echo [ERROR] CSV file not found: %CSV_PATH%
     exit /b 1
 )
 
-echo [INFO] CSV文件: %CSV_PATH%
-echo [INFO] 模型结构: %MODEL_STRUCTURE%
-echo [INFO] 批次大小: %BATCH_SIZE%
-echo [INFO] 训练轮数: %NUM_EPOCHS%
-echo [INFO] 学习率: %LEARNING_RATE% -^> %MIN_LEARNING_RATE%
-echo [INFO] 上下文长度: %CONTEXT_LENGTH%
-echo [INFO] 输出目录: %OUTPUT_DIR%
+echo [INFO] CSV file: %CSV_PATH%
+echo [INFO] Model structure: %MODEL_STRUCTURE%
+echo [INFO] Batch size: %BATCH_SIZE%
+echo [INFO] Number of epochs: %NUM_EPOCHS%
+echo [INFO] Learning rate: %LEARNING_RATE% -^> %MIN_LEARNING_RATE%
+echo [INFO] Context length: %CONTEXT_LENGTH%
+echo [INFO] Output directory: %OUTPUT_DIR%
 echo.
 
-REM 创建输出目录
+REM Create output directories
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 if not exist data mkdir data
 
-echo [INFO] 开始预训练...
+echo [INFO] Starting pretraining...
 python scripts\train.py ^
     --mode pretrain ^
     --data-source csv ^
@@ -56,14 +56,14 @@ python scripts\train.py ^
     --data-dir data
 
 if errorlevel 1 (
-    echo [ERROR] 预训练失败！
+    echo [ERROR] Pretraining failed!
     exit /b 1
 )
 
 echo.
-echo [SUCCESS] 预训练完成！
-echo [INFO] 最佳模型保存在: %OUTPUT_DIR%\best_model
-echo [INFO] 最终模型保存在: %OUTPUT_DIR%\final_model
+echo [SUCCESS] Pretraining completed!
+echo [INFO] Best model saved at: %OUTPUT_DIR%\best_model
+echo [INFO] Final model saved at: %OUTPUT_DIR%\final_model
 echo.
 
 endlocal
