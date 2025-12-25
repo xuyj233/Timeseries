@@ -16,25 +16,25 @@ from models.timer_model import TimerForPrediction
 
 def load_pretrained_model(model_path, device=None):
     """
-    加载预训练模型
+    Load pretrained model
     
     Args:
-        model_path: 模型路径（包含config.json和model.pt的目录）
-        device: 设备（如果为None，自动选择）
+        model_path: Model path (directory containing config.json and model.pt)
+        device: Device (if None, auto-select)
     
     Returns:
-        model: 加载的模型
+        model: Loaded model
     """
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # 加载配置
+    # Load configuration
     config = TimerConfig.from_pretrained(model_path)
     
-    # 创建模型
+    # Create model
     model = TimerForPrediction(config)
     
-    # 加载权重
+    # Load weights
     model_path_pt = os.path.join(model_path, "model.pt")
     if os.path.exists(model_path_pt):
         state_dict = torch.load(model_path_pt, map_location=device)

@@ -88,28 +88,28 @@ class StandardTimeSeriesDataset(Dataset):
     ):
         """
         Args:
-            data: 时间序列数据 (n_samples, n_features)
-            lookback: 历史数据长度
-            pred_len: 预测长度
+            data: Time series data (n_samples, n_features)
+            lookback: Historical data length
+            pred_len: Prediction length
             flag: 'train', 'val', or 'test'
-            scale: 是否归一化
-            train_mean: 训练集均值（用于归一化）
-            train_std: 训练集标准差（用于归一化）
+            scale: Whether to normalize
+            train_mean: Training set mean (for normalization)
+            train_std: Training set standard deviation (for normalization)
         """
         self.lookback = lookback
         self.pred_len = pred_len
         self.flag = flag
         self.scale = scale
         
-        # 归一化
+        # Normalization
         if scale:
             if train_mean is None or train_std is None:
-                # 训练集：使用自身统计量
+                # Training set: use its own statistics
                 self.mean = np.mean(data, axis=0, keepdims=True)
                 self.std = np.std(data, axis=0, keepdims=True)
-                self.std[self.std < 1e-8] = 1.0  # 避免除零
+                self.std[self.std < 1e-8] = 1.0  # Avoid division by zero
             else:
-                # 验证/测试集：使用训练集统计量
+                # Validation/test set: use training set statistics
                 self.mean = train_mean
                 self.std = train_std
             
@@ -119,7 +119,7 @@ class StandardTimeSeriesDataset(Dataset):
             self.mean = None
             self.std = None
         
-        # 创建滑动窗口样本
+        # Create sliding window samples
         self.sequences = []
         total_len = lookback + pred_len
         
@@ -307,15 +307,15 @@ def prepare_multiple_datasets(
     download: bool = True
 ) -> Tuple[StandardTimeSeriesDataset, StandardTimeSeriesDataset, StandardTimeSeriesDataset, dict]:
     """
-    准备多个数据集并合并
+    Prepare multiple datasets and merge them
     
     Args:
-        dataset_names: 数据集名称列表
-        lookback: 历史数据长度
-        pred_len: 预测长度
-        data_dir: 数据目录
-        output_dir: 输出目录
-        download: 是否下载数据集
+        dataset_names: List of dataset names
+        lookback: Historical data length
+        pred_len: Prediction length
+        data_dir: Data directory
+        output_dir: Output directory
+        download: Whether to download datasets
     
     Returns:
         train_dataset, val_dataset, test_dataset, data_config

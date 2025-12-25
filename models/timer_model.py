@@ -107,7 +107,7 @@ class TimeMoeRotaryEmbedding(nn.Module):
 
 
 class TimerAttention(nn.Module):
-    """Timer的注意力层"""
+    """Timer's attention layer"""
     def __init__(self, config: TimerConfig, layer_idx: Optional[int] = None):
         super().__init__()
         self.layer_idx = layer_idx
@@ -220,7 +220,7 @@ class TimerDecoderLayer(nn.Module):
 
 
 class TimerPreTrainedModel(PreTrainedModel):
-    """Timer预训练模型基类"""
+    """Timer pretrained model base class"""
     config_class = TimerConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
@@ -274,7 +274,7 @@ class TimerModel(TimerPreTrainedModel):
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
         elif input_ids is not None:
-            # input_ids可以是2D (batch_size, seq_length) 或 3D (batch_size, seq_length, n_features)
+            # input_ids can be 2D (batch_size, seq_length) or 3D (batch_size, seq_length, n_features)
             if input_ids.ndim == 2:
                 batch_size, seq_length = input_ids.shape
             else:
@@ -372,7 +372,7 @@ class TimerModel(TimerPreTrainedModel):
 
 @dataclass
 class CausalLMOutputWithPast(ModelOutput):
-    """因果语言模型输出"""
+    """Causal language model output"""
     loss: Optional[torch.FloatTensor] = None
     logits: torch.FloatTensor = None
     past_key_values: Optional[Tuple[Tuple[torch.FloatTensor]]] = None
@@ -434,7 +434,7 @@ class TimerForPrediction(TimerPreTrainedModel):
         loss = None
 
         if labels is not None:
-            # 训练模式：计算损失
+            # Training mode: calculate loss
             ar_loss = 0.0
             for lm_head, output_token_len in zip(self.lm_heads, self.config.output_token_lens):
                 one_predictions = lm_head(hidden_states)
@@ -475,7 +475,7 @@ class TimerForPrediction(TimerPreTrainedModel):
         )
 
     def calc_ar_loss(self, predictions, labels, loss_masks, output_token_len):
-        """计算自回归损失"""
+        """Calculate autoregressive loss"""
         seq_len = predictions.shape[1] * self.config.input_token_len
         labels = labels[:, :seq_len - self.config.input_token_len + output_token_len]
         shift_labels = labels.unfold(dimension=-1, size=output_token_len, step=self.config.input_token_len)
