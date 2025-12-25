@@ -114,6 +114,17 @@ class Trainer:
         if self.use_deepspeed:
             # Initialize DeepSpeed
             print("[INFO] Initializing DeepSpeed...")
+            # Load DeepSpeed config
+            with open(deepspeed_config, 'r') as f:
+                ds_config = json.load(f)
+            
+            # Update config with training parameters
+            if 'optimizer' in ds_config and 'params' in ds_config['optimizer']:
+                if ds_config['optimizer']['params'].get('lr') == 'auto':
+                    ds_config['optimizer']['params']['lr'] = base_lr
+                if ds_config['optimizer']['params'].get('weight_decay') == 'auto':
+                    ds_config['optimizer']['params']['weight_decay'] = config.get('weight_decay', 0.01)
+            
             model_engine, optimizer, _, scheduler = deepspeed.initialize(
                 model=model,
                 optimizer=optim.AdamW(
@@ -121,7 +132,7 @@ class Trainer:
                     lr=base_lr,
                     weight_decay=config.get('weight_decay', 0.01)
                 ),
-                config=deepspeed_config
+                config=ds_config
             )
             self.model = model_engine
             self.optimizer = optimizer
